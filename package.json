@@ -1,0 +1,21 @@
+{
+  "name": "swan-post",
+  "version": "1.0.0",
+  "private": true,
+  "bin": {
+    "swp-cli": "./scripts/cli.js"
+  },
+  "scripts": {
+    "build": "node scripts/cli.js build",
+    "new": "node scripts/cli.js new",
+    "render": "node scripts/cli.js render",
+    "serve": "node scripts/cli.js serve",
+    "deploy": "node scripts/cli.js deploy"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "gray-matter": "^4.0.3",
+    "markdown-it": "^14.0.0",
+    "fs-extra": "^11.0.0"
+  }
+}
