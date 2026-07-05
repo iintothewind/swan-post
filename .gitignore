@@ -17,3 +17,6 @@ Thumbs.db
 
 # 环境变量
 .env
+
+# 部署用的临时 clone
+.deploy/

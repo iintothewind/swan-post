@@ -3,5 +3,6 @@
   "author": "Ivar",
   "description": "个人博客",
   "baseUrl": "",
-  "recentPostsCount": 10
+  "recentPostsCount": 10,
+  "deployTarget": "git@github.com:iintothewind/iintothewind.github.io.git"
 }
