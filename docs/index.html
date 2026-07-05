@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{PAGE_TITLE}} - {{SITE_TITLE}}</title>
-<link rel="stylesheet" href="{{BASE_URL}}/css/style.css">
+<title>首页 - 我的博客</title>
+<link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
@@ -12,7 +12,7 @@
 
 <aside id="sidebar">
 <div class="sidebar-header">
-<a href="{{BASE_URL}}/index.html" class="site-title">{{SITE_TITLE}}</a>
+<a href="/index.html" class="site-title">我的博客</a>
 </div>
 <div class="sidebar-tabs">
 <button class="tab-btn active" data-tab="timeline">时间线</button>
@@ -30,10 +30,24 @@
 <div id="overlay-mask"></div>
 
 <main id="content">
-{{CONTENT}}
+<div class="home">
+<h1>我的博客</h1>
+<p class="home-desc">个人博客</p>
+<div class="recent-posts">
+<article class="recent-post-item">
+<h2><a href="/posts/2026-07-05-second-post.html">第二篇文章</a></h2>
+<div class="post-meta">
+<span class="post-date">Sun Jul 05 2026 03:00:00 GMT-0700 (北美太平洋夏令时间)</span>
+<span class="post-tags"><span class="tag-pill">技术，随笔</span></span>
+</div>
+<p class="post-excerpt">这是第二篇文章，测试增量渲染功能。...</p>
+</article>
+</div>
+</div>
+
 </main>
 
-<script>window.BASE_URL = "{{BASE_URL}}";</script>
-<script src="{{BASE_URL}}/js/main.js"></script>
+<script>window.BASE_URL = "";</script>
+<script src="/js/main.js"></script>
 </body>
 </html>

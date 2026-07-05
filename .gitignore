@@ -1,26 +1,19 @@
-# Dependencies
+# 依赖
 node_modules/
 
-# Build output
-docs/
+# npm 日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Environment variables
-.env
-.env.local
-
-# Editor
-.vscode/
-.idea/
-
-# OS
+# 系统文件
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-npm-debug.log*
+# 编辑器
+.vscode/
+.idea/
+*.swp
 
-# Temporary files
-tmp/
-temp/
-*.tmp
+# 环境变量
+.env

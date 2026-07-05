@@ -125,11 +125,13 @@ Thumbs.db
   "title": "我的博客",
   "author": "Ivar",
   "description": "个人博客",
-  "baseUrl": ""
+  "baseUrl": "",
+  "recentPostsCount": 10
 }
 ```
 
 - `baseUrl`:如果博客部署在 `https://username.github.io/`(根域名),`baseUrl` 留空字符串 `""`。如果部署在 `https://username.github.io/reponame/`(项目页面),`baseUrl` 设为 `"/reponame"`。
+- `recentPostsCount`:首页正文区域展示的"最近文章"数量,默认为 `10`。改这个数字不需要改代码,构建脚本读取配置时如果该字段缺失,兜底使用 `10`。
 - 所有模板里引用静态资源时,必须拼接 `{{BASE_URL}}` 前缀(见第 5 节),这样无论根域名还是子路径都能正确工作,**不要写死绝对路径或相对路径 `../`**。
 
 ---
@@ -227,13 +229,15 @@ categories: [分类1]
 </html>
 ```
 
-`templates/index.html`(首页内容区片段,构建时会被塞进 layout 的 `{{CONTENT}}`):
+`templates/index.html`(首页内容区片段,构建时会被塞进 layout 的 `{{CONTENT}}`。`{{RECENT_POSTS_HTML}}` 由构建脚本在服务端直接生成好整段 HTML 后替换进来,**不是**靠前端 JS 异步渲染——这样首页打开瞬间就能看到文章列表,不用等 `posts.json` fetch 回来):
 
 ```html
 <div class="home">
   <h1>{{SITE_TITLE}}</h1>
-  <p>{{SITE_DESCRIPTION}}</p>
-  <p>点击左上角 ☰ 查看全部文章。</p>
+  <p class="home-desc">{{SITE_DESCRIPTION}}</p>
+  <div class="recent-posts">
+    {{RECENT_POSTS_HTML}}
+  </div>
 </div>
 ```
 
@@ -437,6 +441,42 @@ body.sidebar-open #overlay-mask {
   padding: 2px 4px;
   border-radius: 4px;
 }
+
+.home-desc {
+  color: var(--muted);
+  margin-bottom: 32px;
+}
+
+.recent-posts {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.recent-post-item {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.recent-post-item h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.recent-post-item h2 a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.recent-post-item h2 a:hover {
+  color: var(--accent);
+}
+
+.post-excerpt {
+  color: #555;
+  margin: 10px 0 0;
+  font-size: 14px;
+}
 ```
 
 ### 5.4 JS(`assets/js/main.js`,直接使用)
@@ -550,7 +590,7 @@ body.sidebar-open #overlay-mask {
 
 - 数组按 `date` **倒序**排列(最新的在最前)。
 - `url` 是相对于 `baseUrl` 之后的路径(不含开头的 `baseUrl`,拼接逻辑在前端 JS 里已经处理:`BASE_URL + "/" + post.url`)。
-- `excerpt` 字段当前版本先生成但不在 UI 中使用(留作以后扩展),生成方式:取正文纯文本前 100 字符。
+- `excerpt` 字段用于**首页最近文章列表**的摘要展示(第 5.2 / 7.2 节),生成方式:取正文纯文本前 100 字符。
 
 ---
 
@@ -620,6 +660,32 @@ function renderTagsHtml(tags) {
   return (tags || []).map((t) => `<span class="tag-pill">${t}</span>`).join("");
 }
 
+// 按 date 字段对文章数组做倒序排序(最新在前),返回新数组,不修改传入的原数组
+function sortPostsByDateDesc(posts) {
+  return posts.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+// 生成首页"最近文章"列表的 HTML。
+// posts: 已经按 date 倒序排好的 posts.json 条目数组
+// count: 展示条数(来自 blog.config.json 的 recentPostsCount,缺省 10)
+// config: blog.config.json 内容,用来拼接 baseUrl
+function renderRecentPostsHtml(posts, count, config) {
+  const list = posts.slice(0, count);
+  if (list.length === 0) {
+    return '<p class="post-excerpt">还没有发布任何文章。</p>';
+  }
+  return list.map((post) => {
+    return `<article class="recent-post-item">
+  <h2><a href="${config.baseUrl}/${post.url}">${post.title}</a></h2>
+  <div class="post-meta">
+    <span class="post-date">${post.date}</span>
+    <span class="post-tags">${renderTagsHtml(post.tags)}</span>
+  </div>
+  <p class="post-excerpt">${post.excerpt}...</p>
+</article>`;
+  }).join("\n");
+}
+
 // 读取/写入 docs/posts.json(数组),自动按 date 倒序排序后写回
 function loadPostsIndex() {
   const p = path.join(process.cwd(), "docs", "posts.json");
@@ -627,10 +693,13 @@ function loadPostsIndex() {
   return fs.readJsonSync(p);
 }
 
+// 排序后写入 docs/posts.json,并返回排序后的数组供调用方直接复用
+// (调用方通常紧接着要用这个排序好的数组去生成首页最近文章列表,不需要再排一次)
 function savePostsIndex(posts) {
-  posts.sort((a, b) => (a.date < b.date ? 1 : -1));
+  const sorted = sortPostsByDateDesc(posts);
   const p = path.join(process.cwd(), "docs", "posts.json");
-  fs.writeJsonSync(p, posts, { spaces: 2 });
+  fs.writeJsonSync(p, sorted, { spaces: 2 });
+  return sorted;
 }
 
 module.exports = {
@@ -639,6 +708,8 @@ module.exports = {
   renderTemplate,
   listPostFiles,
   renderTagsHtml,
+  sortPostsByDateDesc,
+  renderRecentPostsHtml,
   loadPostsIndex,
   savePostsIndex
 };
@@ -653,8 +724,34 @@ const fs = require("fs-extra");
 const path = require("path");
 const {
   loadConfig, parseMarkdownFile, renderTemplate,
-  listPostFiles, renderTagsHtml, savePostsIndex
+  listPostFiles, renderTagsHtml, renderRecentPostsHtml, savePostsIndex
 } = require("./utils");
+
+// 生成首页 docs/index.html。
+// postsIndexSorted 必须是已经按 date 倒序排好的 posts.json 条目数组
+// (savePostsIndex 的返回值就是排好序的,直接传进来用即可,不要重复排序)。
+// render.js 增量渲染时也会调用这个函数,保证新文章一旦进入最近 N 篇就能立刻反映到首页。
+function renderHomepage(config, postsIndexSorted) {
+  const docsDir = path.join(process.cwd(), "docs");
+  const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
+  const indexTpl = fs.readFileSync(path.join(process.cwd(), "templates", "index.html"), "utf-8");
+
+  const recentCount = config.recentPostsCount || 10;
+  const recentPostsHtml = renderRecentPostsHtml(postsIndexSorted, recentCount, config);
+
+  const homeContent = renderTemplate(indexTpl, {
+    SITE_TITLE: config.title,
+    SITE_DESCRIPTION: config.description,
+    RECENT_POSTS_HTML: recentPostsHtml
+  });
+  const homeHtml = renderTemplate(layoutTpl, {
+    PAGE_TITLE: "首页",
+    SITE_TITLE: config.title,
+    BASE_URL: config.baseUrl,
+    CONTENT: homeContent
+  });
+  fs.writeFileSync(path.join(docsDir, "index.html"), homeHtml, "utf-8");
+}
 
 function build() {
   const config = loadConfig();
@@ -670,10 +767,9 @@ function build() {
   fs.copySync(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
   fs.copySync(path.join(process.cwd(), "assets", "js"), path.join(docsDir, "js"));
 
-  // 3. 读取所有模板文件为字符串
+  // 3. 读取文章模板(布局模板和首页模板留到生成首页那一步再读,由 renderHomepage 内部处理)
   const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
   const postTpl = fs.readFileSync(path.join(process.cwd(), "templates", "post.html"), "utf-8");
-  const indexTpl = fs.readFileSync(path.join(process.cwd(), "templates", "index.html"), "utf-8");
 
   // 4. 解析所有 markdown 文章
   const files = listPostFiles();
@@ -696,20 +792,8 @@ function build() {
     fs.writeFileSync(path.join(docsDir, "posts", post.slug + ".html"), fullHtml, "utf-8");
   });
 
-  // 6. 生成首页
-  const homeContent = renderTemplate(indexTpl, {
-    SITE_TITLE: config.title,
-    SITE_DESCRIPTION: config.description
-  });
-  const homeHtml = renderTemplate(layoutTpl, {
-    PAGE_TITLE: "首页",
-    SITE_TITLE: config.title,
-    BASE_URL: config.baseUrl,
-    CONTENT: homeContent
-  });
-  fs.writeFileSync(path.join(docsDir, "index.html"), homeHtml, "utf-8");
-
-  // 7. 生成 posts.json 索引(注意 url 字段格式:posts/<slug>.html)
+  // 6. 生成 posts.json 索引(注意 url 字段格式:posts/<slug>.html)
+  //    savePostsIndex 会自动按 date 倒序排序并写入 docs/posts.json,同时把排好序的数组 return 回来
   const postsIndex = posts.map((post) => ({
     title: post.title,
     date: post.date,
@@ -719,12 +803,15 @@ function build() {
     url: "posts/" + post.slug + ".html",
     excerpt: post.excerpt
   }));
-  savePostsIndex(postsIndex);
+  const sortedIndex = savePostsIndex(postsIndex);
+
+  // 7. 用排好序的索引生成首页(首页正文区域展示最近 N 篇文章,N 来自 blog.config.json 的 recentPostsCount)
+  renderHomepage(config, sortedIndex);
 
   console.log(`构建完成,共 ${posts.length} 篇文章,输出到 docs/`);
 }
 
-module.exports = { build };
+module.exports = { build, renderHomepage };
 ```
 
 ### 7.3 `scripts/render.js`(单篇增量渲染 —— 对应"命令行 md 直接渲染成 html 然后加载"需求)
@@ -738,6 +825,7 @@ const {
   loadConfig, parseMarkdownFile, renderTemplate,
   renderTagsHtml, loadPostsIndex, savePostsIndex
 } = require("./utils");
+const { renderHomepage } = require("./build");
 
 function renderOne(mdFilePath) {
   const config = loadConfig();
@@ -795,10 +883,15 @@ function renderOne(mdFilePath) {
   } else {
     index.push(entry);
   }
-  savePostsIndex(index);
+  const sortedIndex = savePostsIndex(index);
+
+  // 5. 重新生成首页 —— 这一步不能省略。因为这篇文章有可能刚好进入"最近 N 篇"的名单,
+  //    如果不重新生成首页,新文章能在 sidebar 里点开,但首页正文区域看不到它。
+  renderHomepage(config, sortedIndex);
 
   console.log(`已渲染: ${outputPath}`);
   console.log(`已更新索引: docs/posts.json`);
+  console.log(`已刷新首页: docs/index.html`);
 }
 
 module.exports = { renderOne };
@@ -1078,19 +1171,21 @@ swp-cli deploy -m "写了一篇新文章"
 16. 写入 `README.md`(第 9 节内容)。
 17. 运行 `node scripts/cli.js build`,检查 `docs/` 目录是否生成了 `index.html`、`posts/2026-07-04-hello-world.html`、`posts.json`、`css/style.css`、`js/main.js`。
 18. 运行 `node scripts/cli.js serve`,浏览器打开验证:
-    - 首页正常显示,点击左上角 ☰ 按钮 sidebar 从左侧滑出。
+    - 首页正文区域(不用打开 sidebar)直接显示"最近文章"列表,当前只有一篇 Hello World,应该能看到它的标题、日期、tag、摘要,点击标题能跳转到文章页。
+    - 点击左上角 ☰ 按钮 sidebar 从左侧滑出。
     - sidebar「时间线」tab 显示 Hello World 文章,点击能跳转到文章页。
     - sidebar「标签」tab 显示"随笔 (1)",点击后下方列表显示对应文章。
     - 点击 sidebar 外的遮罩区域,sidebar 收起。
 19. 测试增量渲染:运行 `node scripts/cli.js new second-post --title "第二篇"`,编辑生成的 md 文件写点正文,然后运行 `node scripts/cli.js render source/_posts/<生成的文件名>.md`,确认:
     - `docs/posts/<slug>.html` 被创建。
     - `docs/posts.json` 中新增了这篇文章的条目,且整体仍按日期倒序排列。
-    - 不需要重新运行 `build` 命令,刷新本地预览页面即可在 sidebar 看到新文章。
-20. 测试 deploy 命令(需要仓库已经 `git init` 且配置了 `origin` 远程地址):
+    - **不需要重新运行 `build` 命令**,刷新首页(`docs/index.html`)就能在最近文章列表里看到这篇新文章排在最前面(因为日期最新),刷新 sidebar 也能看到。
+20. 测试 `recentPostsCount` 配置项:把 `blog.config.json` 里的 `recentPostsCount` 改成 `1`,重新运行 `node scripts/cli.js build`,确认首页正文区域只显示 1 篇最新文章,而不是全部。测试完成后记得改回 `10`(或用户想要的数字)并重新 `build` 一次。
+21. 测试 deploy 命令(需要仓库已经 `git init` 且配置了 `origin` 远程地址):
     - 先在没有任何改动的情况下运行 `node scripts/cli.js deploy`,确认输出"没有检测到任何文件变化,无需部署。"且不报错。
     - 改动一篇文章或新建一篇文章后,运行 `node scripts/cli.js deploy -m "test deploy"`,确认依次打印出构建、git add、git commit、git push 的日志,且本地 git log 里出现了一条 message 为 "test deploy" 的提交。
     - 故意在没有配置 `origin` 远程的仓库里运行一次,确认命令捕获错误并打印出可读的中文提示,而不是抛出未处理的异常导致进程崩溃且无提示。
-21. 全部验证通过后,在仓库 Settings 里开启 GitHub Pages(Source: `main` 分支 `/docs` 目录,只需设置一次,后续每次 `deploy` 都会自动更新)。
+22. 全部验证通过后,在仓库 Settings 里开启 GitHub Pages(Source: `main` 分支 `/docs` 目录,只需设置一次,后续每次 `deploy` 都会自动更新)。
 
 ---
 
@@ -1100,6 +1195,8 @@ swp-cli deploy -m "写了一篇新文章"
 - [ ] `swp-cli new <slug> --title "<标题>"`(或等价的 `node scripts/cli.js new ...`)能正确生成带 front-matter 的 md 文件。
 - [ ] `swp-cli render <file>`(或等价的 `node scripts/cli.js render <file>`)能单独渲染一篇文章并正确更新 `posts.json`(新增和覆盖已存在 slug 两种情况都要测试)。
 - [ ] `swp-cli deploy`(或等价的 `node scripts/cli.js deploy`)在无变更时能正确跳过提交;有变更时能自动完成构建 + git add + commit + push;git 命令出错时能打印可读提示而不是裸异常。
+- [ ] 首页正文区域(不打开 sidebar)直接服务端渲染显示最近 `recentPostsCount` 篇文章(标题、日期、tag、摘要),而不是靠前端 JS 异步 fetch 后再显示;修改 `recentPostsCount` 并重新 `build` 后,首页展示条数相应变化。
+- [ ] 用 `render` 命令增量渲染单篇文章后,即使不执行 `build`,首页的最近文章列表也会同步更新(因为 `render.js` 内部调用了 `renderHomepage`)。
 - [ ] sidebar 默认隐藏,点击按钮可以打开/关闭。
 - [ ] sidebar 时间线视图按日期倒序正确显示所有文章。
 - [ ] sidebar 标签视图正确按 tag 分组,点击 tag 能过滤出对应文章列表。
