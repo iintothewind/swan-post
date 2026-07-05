@@ -22,10 +22,13 @@ const raw = fs.readFileSync(filePath, "utf-8");
 const { data, content } = matter(raw);
 const slug = path.basename(filePath, ".md");
 const contentHtml = md.render(content);
-const plainText = content.replace(/[#*`>\-\[\]!]/g, "").replace(/\n+/g, " ").trim();
+const plainText = contentHtml.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 const excerpt = plainText.slice(0, 100);
-const dateStr = data.date ? String(data.date) : "";
-const formattedDate = dateStr ? new Date(dateStr).toISOString().split("T")[0] : "";
+const rawDate = data.date instanceof Date ? data.date : (data.date ? new Date(data.date) : null);
+const dateStr = rawDate ? rawDate.toISOString() : "";
+const formattedDate = rawDate
+? rawDate.getFullYear() + "-" + String(rawDate.getMonth() + 1).padStart(2, "0") + "-" + String(rawDate.getDate()).padStart(2, "0")
+: "";
 return {
 title: data.title || slug,
 date: dateStr,
@@ -60,13 +63,17 @@ return fs.readdirSync(dir)
 
 // 把 tags 数组渲染成 HTML: <span class="tag-pill">xxx</span> 拼接
 function renderTagsHtml(tags) {
-const list = Array.isArray(tags) ? tags : (typeof tags === "string" && tags.trim() ? tags.split(",").map((s) => s.trim()).filter(Boolean) : []);
+const list = Array.isArray(tags) ? tags : [];
 return list.map((t) => `<span class="tag-pill">${t}</span>`).join("");
 }
 
 // 按 date 字段对文章数组做倒序排序 (最新在前)，返回新数组，不修改传入的原数组
 function sortPostsByDateDesc(posts) {
-return posts.slice().sort((a, b) => (b.formattedDate || "").localeCompare(a.formattedDate || ""));
+return posts.slice().sort((a, b) => {
+const dateCmp = (b.date || "").localeCompare(a.date || "");
+if (dateCmp !== 0) return dateCmp;
+return (b.title || "").localeCompare(a.title || "");
+});
 }
 
 // 生成首页"最近文章"列表的 HTML。

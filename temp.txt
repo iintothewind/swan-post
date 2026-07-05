@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>首页 - 我的博客</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<button id="sidebar-toggle" aria-label="打开菜单">☰</button>
+
+<aside id="sidebar">
+<div class="sidebar-header">
+<a href="/index.html" class="site-title">我的博客</a>
+</div>
+<div class="sidebar-tabs">
+<button class="tab-btn active" data-tab="timeline">时间线</button>
+<button class="tab-btn" data-tab="tags">标签</button>
+</div>
+<div id="tab-timeline" class="tab-panel active">
+<ul id="post-list-timeline" class="post-list"></ul>
+</div>
+<div id="tab-tags" class="tab-panel">
+<div id="tag-cloud"></div>
+<ul id="post-list-by-tag" class="post-list"></ul>
+</div>
+</aside>
+
+<div id="overlay-mask"></div>
+
+<main id="content">
+<div class="home">
+<h1>我的博客</h1>
+<p class="home-desc">个人博客</p>
+<div class="recent-posts">
+<article class="recent-post-item">
+<h2><a href="/posts/2026-07-05-second-post.html">第二篇文章<span class="post-item-date">2026-07-05</span></a></h2>
+<div class="post-meta">
+<span class="post-date">2026-07-05</span>
+<span class="post-tags"><span class="tag-pill">技术，随笔</span></span>
+</div>
+<p class="post-excerpt">这是第二篇文章，测试增量渲染功能。...</p>
+</article>
+<article class="recent-post-item">
+<h2><a href="/posts/2026-07-04-hello-world.html">Hello World<span class="post-item-date">2026-07-04</span></a></h2>
+<div class="post-meta">
+<span class="post-date">2026-07-04</span>
+<span class="post-tags"><span class="tag-pill">随笔</span></span>
+</div>
+<p class="post-excerpt">这是我的第一篇文章。欢迎来到我的博客。...</p>
+</article>
+</div>
+</div>
+
+</main>
+
+<script>window.BASE_URL = "";</script>
+<script src="/js/main.js"></script>
+</body>
+</html>

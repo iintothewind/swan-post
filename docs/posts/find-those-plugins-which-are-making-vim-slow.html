@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>find those plugins which are making vim slow - 我的博客</title>
+<link rel="stylesheet" href="/prism/prism-monokai.min.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<button id="sidebar-toggle" aria-label="打开菜单">☰</button>
+
+<aside id="sidebar">
+<div class="sidebar-header">
+<a href="/index.html" class="site-title">我的博客</a>
+</div>
+<div class="sidebar-tabs">
+<button class="tab-btn active" data-tab="timeline">时间线</button>
+<button class="tab-btn" data-tab="tags">标签</button>
+</div>
+<div id="tab-timeline" class="tab-panel active">
+<ul id="post-list-timeline" class="post-list"></ul>
+</div>
+<div id="tab-tags" class="tab-panel">
+<div id="tag-cloud"></div>
+<ul id="post-list-by-tag" class="post-list"></ul>
+</div>
+</aside>
+
+<div id="overlay-mask"></div>
+
+<main id="content">
+<article class="post">
+<a href="/index.html" class="back-home">← 返回首页</a>
+<h1>find those plugins which are making vim slow</h1>
+<div class="post-meta">
+<span class="post-date">2019-12-10</span>
+<span class="post-tags"><span class="tag-pill">vim</span></span>
+</div>
+<div class="post-body">
+<h2>option 1: use <strong>hyiltiz/vim-plugins-profile</strong></h2>
+<p><strong>hyiltiz/vim-plugins-profile</strong> is a plugin which can find the top 10 plugins that slows down vim startup</p>
+<pre><code class="language-shell">Generating vim startup profile...
+Parsing vim startup profile...
+Crunching data and generating profile plot ...
+
+Your plugins startup profile graph is saved
+as `profile.png` under current directory.
+
+==========================================
+Top 10 Plugins That Slows Down Vim Startup
+==========================================
+   1	105.13	&quot;vim-colorschemes&quot;
+   2	42.661	&quot;vim-easytags&quot;
+   3	31.173	&quot;vim-vendetta&quot;
+   4	22.02	&quot;syntastic&quot;
+   5	13.362	&quot;vim-online-thesaurus&quot;
+   6	7.888	&quot;vim-easymotion&quot;
+   7	6.931	&quot;vim-airline&quot;
+   8	6.608	&quot;YankRing.vim&quot;
+   9	5.266	&quot;nerdcommenter&quot;
+  10	5.017	&quot;delimitMate&quot;
+==========================================
+Done!
+</code></pre>
+<h2>option 2: use built-in profiling support</h2>
+<p>After launching vim do:</p>
+<pre><code>:profile start profile.log
+:profile func *
+:profile file *
+&quot; do some operations that you feel slow in vim
+:profile pause
+
+</code></pre>
+<p>The <code>profile.log</code> is created in your vim sessions's current directory.</p>
+
+</div>
+</article>
+
+</main>
+
+<script>window.BASE_URL = "";</script>
+<script src="/prism/prism.min.js"></script>
+<script src="/js/main.js"></script>
+</body>
+</html>

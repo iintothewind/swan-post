@@ -1,0 +1,342 @@
+[
+  {
+    "title": "语法高亮演示",
+    "date": "2026-07-04T23:00:00.000Z",
+    "formattedDate": "2026-07-04",
+    "tags": [
+      "demo"
+    ],
+    "categories": [],
+    "slug": "2026-07-04-syntax-demo",
+    "url": "posts/2026-07-04-syntax-demo.html",
+    "excerpt": "代码高亮 function sayHello(name) {} .box { color: blue; }"
+  },
+  {
+    "title": "语法高亮演示",
+    "date": "2026-07-04T23:00:00.000Z",
+    "formattedDate": "2026-07-04",
+    "tags": [
+      "demo"
+    ],
+    "categories": [],
+    "slug": "2026-07-04-syntax-test",
+    "url": "posts/2026-07-04-syntax-test.html",
+    "excerpt": "代码高亮 javascript function sayHello(name) { console.log(Hello, !); } sayHello('World'); python import "
+  },
+  {
+    "title": "测试语法高亮",
+    "date": "2026-07-04T12:00:00.000Z",
+    "formattedDate": "2026-07-04",
+    "tags": [
+      "test"
+    ],
+    "categories": [],
+    "slug": "SOR2XCombo_cn",
+    "url": "posts/SOR2XCombo_cn.html",
+    "excerpt": "测试代码高亮 这里是普通段落。 下面是 JavaScript 代码： function greet(name) { console.log(`Hello, ${name}!`); } greet(&q"
+  },
+  {
+    "title": "Streets of Rage SOR2XCombo EN",
+    "date": "2026-06-20T19:21:34.000Z",
+    "formattedDate": "2026-06-20",
+    "tags": [
+      "game"
+    ],
+    "categories": [],
+    "slug": "SOR2XCombo_en",
+    "url": "posts/SOR2XCombo_en.html",
+    "excerpt": "Streets of Rage SOR2XCombo Introduction SOR2XCombo is a MOD for SOR2X, a side-scrolling beat-'em-up "
+  },
+  {
+    "title": "fixed CORS problem caused by shiro",
+    "date": "2024-09-06T13:10:27.000Z",
+    "formattedDate": "2024-09-06",
+    "tags": [
+      "shiro",
+      "java",
+      "cors"
+    ],
+    "categories": [],
+    "slug": "fix-cors-problem-caused-by-shiro",
+    "url": "posts/fix-cors-problem-caused-by-shiro.html",
+    "excerpt": "problem A developer from a business partner's company reported a CORS issue with our API. The follow"
+  },
+  {
+    "title": "aws linux install docker",
+    "date": "2023-11-20T14:49:40.000Z",
+    "formattedDate": "2023-11-20",
+    "tags": [
+      "linux",
+      "docker"
+    ],
+    "categories": [],
+    "slug": "aws-linux-install-docker",
+    "url": "posts/aws-linux-install-docker.html",
+    "excerpt": "ssh ec2-user@ec2-ip-address-dns-name-here # install docker sudo yum update sudo yum search docker su"
+  },
+  {
+    "title": "frp",
+    "date": "2023-07-10T12:21:34.000Z",
+    "formattedDate": "2023-07-10",
+    "tags": [
+      "linux",
+      "docker",
+      "frp"
+    ],
+    "categories": [],
+    "slug": "frp",
+    "url": "posts/frp.html",
+    "excerpt": "frp docker deployment official docs https://gofrp.org/docs before the work frp contains two parts: t"
+  },
+  {
+    "title": "use fastgit to boost git access",
+    "date": "2021-11-09T16:56:30.000Z",
+    "formattedDate": "2021-11-09",
+    "tags": [
+      "linux",
+      "git"
+    ],
+    "categories": [],
+    "slug": "use-fastgit-to-boost-git-access",
+    "url": "posts/use-fastgit-to-boost-git-access.html",
+    "excerpt": "git config --global url.&quot;https://hub.fastgit.org/&quot;.insteadOf &quot;https://github.com/&quo"
+  },
+  {
+    "title": "ffmpeg useful commands",
+    "date": "2021-10-29T14:06:44.000Z",
+    "formattedDate": "2021-10-29",
+    "tags": [
+      "ffmpeg"
+    ],
+    "categories": [],
+    "slug": "ffmpeg-useful-commands",
+    "url": "posts/ffmpeg-useful-commands.html",
+    "excerpt": "Convert MP3 to OGG ffmpeg -i input.mp3 -acodec libopus -b:a 64k -compression_level 10 -application v"
+  },
+  {
+    "title": "set user and group in docker compose",
+    "date": "2021-09-11T18:05:59.000Z",
+    "formattedDate": "2021-09-11",
+    "tags": [
+      "docker"
+    ],
+    "categories": [],
+    "slug": "set-user-and-group-in-docker-compose",
+    "url": "posts/set-user-and-group-in-docker-compose.html",
+    "excerpt": "Step 1: Add user entry in docker-compose.yml version: '3' services: app: image: alpine user: &quot;$"
+  },
+  {
+    "title": "street cars in GT Sport",
+    "date": "2021-09-06T00:39:21.000Z",
+    "formattedDate": "2021-09-05",
+    "tags": [
+      "racing"
+    ],
+    "categories": [],
+    "slug": "street-cars",
+    "url": "posts/street-cars.html",
+    "excerpt": "GT Sport 街车点评 Toyota AE86 Sprinter Trueno - 永远的4AGE 这是我玩GT Sport之后上手的第一辆车 因为一直以来深受头文字D的影响, 这辆车在我心里的地"
+  },
+  {
+    "title": "centos 7 install docker",
+    "date": "2021-07-26T16:16:15.000Z",
+    "formattedDate": "2021-07-26",
+    "tags": [
+      "linux",
+      "centos7"
+    ],
+    "categories": [],
+    "slug": "centos-7-install-docker",
+    "url": "posts/centos-7-install-docker.html",
+    "excerpt": "sudo yum remove mariadb-libs sudo yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/"
+  },
+  {
+    "title": "create user and grant permissions after installing mysqld",
+    "date": "2021-07-17T09:36:54.000Z",
+    "formattedDate": "2021-07-17",
+    "tags": [
+      "linux",
+      "mysql"
+    ],
+    "categories": [],
+    "slug": "create-user-and-grant-permissions-after-installing-mysqld",
+    "url": "posts/create-user-and-grant-permissions-after-installing-mysqld.html",
+    "excerpt": "mysqld在安装完成以后会生成一个随机的root密码, 但需要在登录之后马上修改密码, 比较繁琐. 更好的创建账号权限的步骤如下, 修改my.cnf文件 # 最后一行添加 skip-grant-ta"
+  },
+  {
+    "title": "use yum downloadonly plugin to download rpms",
+    "date": "2021-07-17T09:27:40.000Z",
+    "formattedDate": "2021-07-17",
+    "tags": [
+      "linux",
+      "centos7"
+    ],
+    "categories": [],
+    "slug": "use-yum-downloadonly-plugin-to-download-rpms",
+    "url": "posts/use-yum-downloadonly-plugin-to-download-rpms.html",
+    "excerpt": "使用yum downloadonly插件下载rpm安装文件 因为经常需要离线安装所需要的工具, 而rpm本身有很多依赖需要自己一个个去找很麻烦, 偶尔发现了这个插件很有用: # 首先安装yum的dow"
+  },
+  {
+    "title": "warning messages and solutions in redis docker deployment",
+    "date": "2021-01-15T21:42:02.000Z",
+    "formattedDate": "2021-01-15",
+    "tags": [
+      "linux",
+      "bash"
+    ],
+    "categories": [],
+    "slug": "warning-messages-and-solutions-in-redis-docker-deployment",
+    "url": "posts/warning-messages-and-solutions-in-redis-docker-deployment.html",
+    "excerpt": "warning The TCP backlog setting of 511 cannot be enforced because /proc/sys/net/core/somaxconn is se"
+  },
+  {
+    "title": "the reason of NoClassDefFoundError and how to fix it",
+    "date": "2020-05-08T15:48:27.000Z",
+    "formattedDate": "2020-05-08",
+    "tags": [
+      "java"
+    ],
+    "categories": [],
+    "slug": "the-reason-of-NoClassDefFoundError-and-how-to-fix-it",
+    "url": "posts/the-reason-of-NoClassDefFoundError-and-how-to-fix-it.html",
+    "excerpt": "problem Recently some team members reported that some instances of our application occasionally fail"
+  },
+  {
+    "title": "mqtt and mosquitto learning note",
+    "date": "2020-05-03T17:22:00.000Z",
+    "formattedDate": "2020-05-03",
+    "tags": [
+      "mqtt"
+    ],
+    "categories": [],
+    "slug": "mqtt-and-mosquitto-learning-note",
+    "url": "posts/mqtt-and-mosquitto-learning-note.html",
+    "excerpt": "mqtt是一个设计的非常好用的轻量级消息传输协议. 它广泛被应用在机器直接交互的物联网场景之中. 它的特点相信在网上很多文章中已经介绍的够多了. 我这里只说一些我感兴趣的: QoS QoS 0: At"
+  },
+  {
+    "title": "install docker-compose on ReapberryPi",
+    "date": "2020-05-03T17:13:37.000Z",
+    "formattedDate": "2020-05-03",
+    "tags": [
+      "linux"
+    ],
+    "categories": [],
+    "slug": "install-docker-compose-on-ReapberryPi",
+    "url": "posts/install-docker-compose-on-ReapberryPi.html",
+    "excerpt": "Arm Arch based docker-compose is not officially provided. To install it, we should use: sudo apt ins"
+  },
+  {
+    "title": "firewalld command cheet sheet",
+    "date": "2020-05-03T15:50:42.000Z",
+    "formattedDate": "2020-05-03",
+    "tags": [
+      "linux",
+      "bash"
+    ],
+    "categories": [],
+    "slug": "firewalld-command-cheet-sheet",
+    "url": "posts/firewalld-command-cheet-sheet.html",
+    "excerpt": "启动一个服务： systemctl --type=service systemctl start firewalld.service 关闭一个服务： systemctl stop firewalld."
+  },
+  {
+    "title": "bash command cheat sheet",
+    "date": "2020-05-03T11:53:30.000Z",
+    "formattedDate": "2020-05-03",
+    "tags": [
+      "linux",
+      "bash"
+    ],
+    "categories": [],
+    "slug": "bash-command-cheet-sheet",
+    "url": "posts/bash-command-cheet-sheet.html",
+    "excerpt": "My WizNote service has been expired. I did not pay to renew the service. It is good and convenient t"
+  },
+  {
+    "title": "different ways to get a substring in bash",
+    "date": "2020-04-30T09:05:47.000Z",
+    "formattedDate": "2020-04-30",
+    "tags": [
+      "linux",
+      "bash"
+    ],
+    "categories": [],
+    "slug": "different-ways-to-get-a-substring-in-bash",
+    "url": "posts/different-ways-to-get-a-substring-in-bash.html",
+    "excerpt": "Linux 的字符串截取很有用,有八种方法。 假设有变量var=http://www.aaa.com/123.htm # 号截取，删除左边字符，保留右边字符 echo ${var#*//} 其中 va"
+  },
+  {
+    "title": "fix self signed certificate in certificate chain error while executing npm install",
+    "date": "2019-12-12T13:20:30.000Z",
+    "formattedDate": "2019-12-12",
+    "tags": [
+      "javascript",
+      "npm"
+    ],
+    "categories": [],
+    "slug": "fix-self-signed-certificate-in-certificate-chain-error-while-executing-npm-install",
+    "url": "posts/fix-self-signed-certificate-in-certificate-chain-error-while-executing-npm-install.html",
+    "excerpt": "the problem The error occurred while executing &quot;npm clean-install&quot;: gyp ERR! configure err"
+  },
+  {
+    "title": "compilation error when using Comparator.comparing()",
+    "date": "2019-12-10T18:13:12.000Z",
+    "formattedDate": "2019-12-10",
+    "tags": [
+      "java"
+    ],
+    "categories": [],
+    "slug": "compilation-error-when-using-Comparator-comparing",
+    "url": "posts/compilation-error-when-using-Comparator-comparing.html",
+    "excerpt": "the problem First, lets take a look at the following code sample: Collections.sort(playlist, Compara"
+  },
+  {
+    "title": "find those plugins which are making vim slow",
+    "date": "2019-12-10T17:53:36.000Z",
+    "formattedDate": "2019-12-10",
+    "tags": [
+      "vim"
+    ],
+    "categories": [],
+    "slug": "find-those-plugins-which-are-making-vim-slow",
+    "url": "posts/find-those-plugins-which-are-making-vim-slow.html",
+    "excerpt": "option 1: use hyiltiz/vim-plugins-profile hyiltiz/vim-plugins-profile is a plugin which can find the"
+  },
+  {
+    "title": "install language support for centos 8",
+    "date": "2019-10-16T11:48:25.000Z",
+    "formattedDate": "2019-10-16",
+    "tags": [
+      "linux",
+      "centos8"
+    ],
+    "categories": [],
+    "slug": "install-language-support-for-centos-8",
+    "url": "posts/install-language-support-for-centos-8.html",
+    "excerpt": "如何在centos 8 stream上通过命令正确的安装中文语言支持 Recently I have been using centos 8 stream on vagrant. I used zh_"
+  },
+  {
+    "title": "use update-alternatives to solve python no such file or directory problem",
+    "date": "2019-10-16T11:18:53.000Z",
+    "formattedDate": "2019-10-16",
+    "tags": [
+      "linux",
+      "centos8"
+    ],
+    "categories": [],
+    "slug": "use-update-alternatives-to-solve-python-no-such-file-or-directory-problem",
+    "url": "posts/use-update-alternatives-to-solve-python-no-such-file-or-directory-problem.html",
+    "excerpt": "the problem Recently I am trying to use the centos 8 stream. When I was trying to install python as "
+  },
+  {
+    "title": "add timeout support for CompletableFuture in java 8",
+    "date": "2019-08-13T14:42:50.000Z",
+    "formattedDate": "2019-08-13",
+    "tags": [
+      "java"
+    ],
+    "categories": [],
+    "slug": "add_timeout_support_for_CompletableFuture_in_java_8",
+    "url": "posts/add_timeout_support_for_CompletableFuture_in_java_8.html",
+    "excerpt": "reason CompletableFuture is a useful tool introduced since java 8. It provides many convenient metho"
+  }
+]

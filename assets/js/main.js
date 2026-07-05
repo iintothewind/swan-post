@@ -46,7 +46,8 @@ function buildPostItem(post) {
 var li = document.createElement("li");
 var a = document.createElement("a");
 a.href = BASE_URL + "/" + post.url;
-a.innerHTML = post.title + '<span class="post-item-date">' + post.formattedDate + "</span>";
+var dateText = post.formattedDate || post.date || "";
+a.innerHTML = post.title + '<span class="post-item-date">' + dateText + "</span>";
 li.appendChild(a);
 return li;
 }
@@ -54,7 +55,8 @@ return li;
 function renderTagCloud(posts) {
 var tagMap = {};
 posts.forEach(function (post) {
-(post.tags || []).forEach(function (tag) {
+var tags = Array.isArray(post.tags) ? post.tags : [];
+tags.forEach(function (tag) {
 tagMap[tag] = tagMap[tag] || [];
 tagMap[tag].push(post);
 });

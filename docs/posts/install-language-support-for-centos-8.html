@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>install language support for centos 8 - 我的博客</title>
+<link rel="stylesheet" href="/prism/prism-monokai.min.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<button id="sidebar-toggle" aria-label="打开菜单">☰</button>
+
+<aside id="sidebar">
+<div class="sidebar-header">
+<a href="/index.html" class="site-title">我的博客</a>
+</div>
+<div class="sidebar-tabs">
+<button class="tab-btn active" data-tab="timeline">时间线</button>
+<button class="tab-btn" data-tab="tags">标签</button>
+</div>
+<div id="tab-timeline" class="tab-panel active">
+<ul id="post-list-timeline" class="post-list"></ul>
+</div>
+<div id="tab-tags" class="tab-panel">
+<div id="tag-cloud"></div>
+<ul id="post-list-by-tag" class="post-list"></ul>
+</div>
+</aside>
+
+<div id="overlay-mask"></div>
+
+<main id="content">
+<article class="post">
+<a href="/index.html" class="back-home">← 返回首页</a>
+<h1>install language support for centos 8</h1>
+<div class="post-meta">
+<span class="post-date">2019-10-16</span>
+<span class="post-tags"><span class="tag-pill">linux</span><span class="tag-pill">centos8</span></span>
+</div>
+<div class="post-body">
+<h2>如何在centos 8 stream上通过命令正确的安装中文语言支持</h2>
+<p>Recently I have been using centos 8 stream on vagrant.
+I used <code>zh_CN.UTF-8</code> on my host env as this:</p>
+<pre><code>LC_CTYPE=zh_CN.UTF-8
+LC_ALL=zh_CN.UTF-8
+</code></pre>
+<p>But after SSH login to centos, such error message dispayed before the prompt line:</p>
+<pre><code>-bash: warning: setlocale: LC_ALL: cannot change locale (zh_CN.UTF-8)
+/bin/sh: warning: setlocale: LC_ALL: cannot change locale (zh_CN.UTF-8)
+/bin/sh: warning: setlocale: LC_ALL: cannot change locale (zh_CN.UTF-8)
+/bin/sh: warning: setlocale: LC_ALL: cannot change locale (zh_CN.UTF-8)
+-bash: warning: setlocale: LC_ALL: cannot change locale (zh_CN.UTF-8)
+</code></pre>
+<p>Usually this is not such a big issue, but it is really annoying.
+It means currently the system dose not support chinese characters in console output. So there could be junk code dispayed when it tries to dispay chinese characters.</p>
+<p>By solving this problem, I need to install language support for centos 8 stream.</p>
+<p>I have searched almost all the internet, but still not found any guides which can tell me what the right package can be used to add chinese language support.</p>
+<p>The similar pages are all for centos 7 and previous versions, and these packages are no longer existing.</p>
+<p>At the end, I found this one on redhat official document website:
+<a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_basic_system_settings/installing-using-langpacks">INSTALLING AND USING LANGPACKS</a></p>
+<pre><code>7.2.2. Installing language support
+To add new a language support, run the following command as the root user:
+
+~]# yum install langpacks-&lt;locale_code&gt;
+</code></pre>
+<p>On centos 8, <code>yum</code> is not suggested so we can use <code>dnf</code>.
+So the right way to install chinese language support is:</p>
+<pre><code>sudo dnf search langpacks*
+=== Name Matched: langpacks* =====
+langpacks-si.noarch : Sinhala langpacks meta-package
+langpacks-sk.noarch : Slovak langpacks meta-package
+langpacks-sl.noarch : Slovenian langpacks meta-package
+langpacks-sq.noarch : Albanian langpacks meta-package
+langpacks-sr.noarch : Serbian langpacks meta-package
+langpacks-ss.noarch : Swati langpacks meta-package
+langpacks-sv.noarch : Swedish langpacks meta-package
+langpacks-ta.noarch : Tamil langpacks meta-package
+langpacks-te.noarch : Telugu langpacks meta-package
+langpacks-th.noarch : Thai langpacks meta-package
+langpacks-tn.noarch : Tswana langpacks meta-package
+langpacks-tr.noarch : Turkish langpacks meta-package
+langpacks-ts.noarch : Tsonga langpacks meta-package
+langpacks-uk.noarch : Ukrainian langpacks meta-package
+langpacks-ur.noarch : Urdu langpacks meta-package
+langpacks-ve.noarch : Venda langpacks meta-package
+langpacks-vi.noarch : Vietnamese langpacks meta-package
+langpacks-xh.noarch : Xhosa langpacks meta-package
+langpacks-zu.noarch : Zulu langpacks meta-package
+langpacks-ast.noarch : Asturian langpacks meta-package
+langpacks-mai.noarch : Maithili langpacks meta-package
+langpacks-nso.noarch : Northern Sotho langpacks meta-package
+langpacks-zh_CN.noarch : Simplified Chinese langpacks meta-package
+langpacks-en_GB.noarch : English (United Kingdom) langpacks meta-package
+langpacks-pt_BR.noarch : Portuguese (Brazil) langpacks meta-package
+langpacks-zh_CN.noarch : Simplified Chinese langpacks meta-package
+langpacks-zh_TW.noarch : Traditional Chinese langpacks meta-package
+</code></pre>
+<p>It shows a list of provided language packs for you to install.
+If you choose <code>langpacks-zh_CN</code> to install, then just use:</p>
+<pre><code>sudo dnf install langpacks-zh_CN
+sudo dnf install glibc-langpack-zh
+</code></pre>
+<p>Then chinese language support is installed.</p>
+
+</div>
+</article>
+
+</main>
+
+<script>window.BASE_URL = "";</script>
+<script src="/prism/prism.min.js"></script>
+<script src="/js/main.js"></script>
+</body>
+</html>

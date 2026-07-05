@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>different ways to get a substring in bash - 我的博客</title>
+<link rel="stylesheet" href="/prism/prism-monokai.min.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<button id="sidebar-toggle" aria-label="打开菜单">☰</button>
+
+<aside id="sidebar">
+<div class="sidebar-header">
+<a href="/index.html" class="site-title">我的博客</a>
+</div>
+<div class="sidebar-tabs">
+<button class="tab-btn active" data-tab="timeline">时间线</button>
+<button class="tab-btn" data-tab="tags">标签</button>
+</div>
+<div id="tab-timeline" class="tab-panel active">
+<ul id="post-list-timeline" class="post-list"></ul>
+</div>
+<div id="tab-tags" class="tab-panel">
+<div id="tag-cloud"></div>
+<ul id="post-list-by-tag" class="post-list"></ul>
+</div>
+</aside>
+
+<div id="overlay-mask"></div>
+
+<main id="content">
+<article class="post">
+<a href="/index.html" class="back-home">← 返回首页</a>
+<h1>different ways to get a substring in bash</h1>
+<div class="post-meta">
+<span class="post-date">2020-04-30</span>
+<span class="post-tags"><span class="tag-pill">linux</span><span class="tag-pill">bash</span></span>
+</div>
+<div class="post-body">
+<p>Linux 的字符串截取很有用,有八种方法。</p>
+<p>假设有变量<code>var=http://www.aaa.com/123.htm</code></p>
+<h2># 号截取，删除左边字符，保留右边字符</h2>
+<pre><code class="language-bash">echo ${var#*//}
+</code></pre>
+<p>其中 var 是变量名，<code>#</code> 号是运算符，<code>*//</code> 表示从左边开始删除第一个 <code>//</code> 号及左边的所有字符
+即删除 <code>http://</code>
+结果是<code>www.aaa.com/123.htm</code></p>
+<h2>## 号截取，删除左边字符，保留右边字符</h2>
+<pre><code class="language-bash">echo ${var##*/}
+</code></pre>
+<p><code>##*/</code> 表示从左边开始删除最后（最右边）一个 <code>/</code> 号及左边的所有字符
+即删除 <code>http://www.aaa.com/</code>
+结果是<code>123.htm</code></p>
+<h2>%号截取，删除右边字符，保留左边字符</h2>
+<pre><code class="language-bash">echo ${var%/*}
+</code></pre>
+<p><code>%/*</code> 表示从右边开始，删除第一个 <code>/</code> 号及右边的字符
+结果是<code>http://www.aaa.com</code></p>
+<h2>%% 号截取，删除右边字符，保留左边字符</h2>
+<pre><code class="language-bash">echo ${var%%/*}
+</code></pre>
+<p><code>%%/*</code> 表示从右边开始，删除最后（最左边）一个 <code>/</code> 号及右边的字符
+结果是<code>http:</code></p>
+<h2>从左边第几个字符开始，一直到结束</h2>
+<pre><code class="language-bash">echo ${var:7}
+</code></pre>
+<p>其中的 7 表示左边第8个字符开始，一直到结束。
+结果是<code>www.aaa.com/123.htm</code></p>
+<h2>从右边第几个字符开始，及字符的个数</h2>
+<pre><code class="language-bash">echo ${var:0-7:3}
+</code></pre>
+<p>其中的 0-7 表示右边算起第七个字符开始，3 表示字符的个数。
+结果是<code>123</code></p>
+<h2>从右边第几个字符开始，一直到结束</h2>
+<pre><code class="language-bash">echo ${var:0-7}
+</code></pre>
+<p>表示从右边第七个字符开始，一直到结束。
+结果是<code>123.htm</code></p>
+<p>注：（左边的第一个字符是用 0 表示，右边的第一个字符用 0-1 表示）</p>
+<h2>使用<code>cut</code></h2>
+<pre><code class="language-bash">echo $var | cut -nb 1-7 # http://
+echo $var | cut -nc -7  # http://
+echo $var | cut -nc 8-  # www.aaa.com
+</code></pre>
+<h2>references</h2>
+<p><a href="https://www.jb51.net/article/56563.htm">Shell脚本8种字符串截取方法总结</a></p>
+
+</div>
+</article>
+
+</main>
+
+<script>window.BASE_URL = "";</script>
+<script src="/prism/prism.min.js"></script>
+<script src="/js/main.js"></script>
+</body>
+</html>

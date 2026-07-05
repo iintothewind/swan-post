@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>bash command cheat sheet - 我的博客</title>
+<link rel="stylesheet" href="/prism/prism-monokai.min.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<button id="sidebar-toggle" aria-label="打开菜单">☰</button>
+
+<aside id="sidebar">
+<div class="sidebar-header">
+<a href="/index.html" class="site-title">我的博客</a>
+</div>
+<div class="sidebar-tabs">
+<button class="tab-btn active" data-tab="timeline">时间线</button>
+<button class="tab-btn" data-tab="tags">标签</button>
+</div>
+<div id="tab-timeline" class="tab-panel active">
+<ul id="post-list-timeline" class="post-list"></ul>
+</div>
+<div id="tab-tags" class="tab-panel">
+<div id="tag-cloud"></div>
+<ul id="post-list-by-tag" class="post-list"></ul>
+</div>
+</aside>
+
+<div id="overlay-mask"></div>
+
+<main id="content">
+<article class="post">
+<a href="/index.html" class="back-home">← 返回首页</a>
+<h1>bash command cheat sheet</h1>
+<div class="post-meta">
+<span class="post-date">2020-05-03</span>
+<span class="post-tags"><span class="tag-pill">linux</span><span class="tag-pill">bash</span></span>
+</div>
+<div class="post-body">
+<p>My WizNote service has been expired.
+I did not pay to renew the service.
+It is good and convenient though.
+So I decided to move all my previous learning notes to here.
+Most of them are not originally created by me.
+I would try to include the source.
+Please remind me to delete them if you are the author and you feel it is a violation of your copyright.</p>
+<pre><code class="language-bash">
+# last parameter
+$_
+
+# word replace
+^before^after
+
+# check alias
+type -a ll
+
+alias sudo='sudo '
+# greps
+alias grep='grep --color'
+alias egrep='egrep --color'
+alias fgrep='fgrep --color'
+
+# utils
+alias sudo=&quot;sudo &quot;
+alias ll=&quot;ls -lthF&quot;
+alias la=&quot;ls -lthFA&quot;
+alias md=&quot;mkdir &quot;
+alias rm=&quot;rm -i&quot;
+alias mdate=&quot;date &quot;+%Y-%m-%d %H:%M:%S&quot;&quot;
+
+# fedora
+alias vim=&quot;gvim -v&quot;
+alias xcp=&quot;xclip -selection clipboard&quot;
+alias xcv=&quot;xclip -o&quot;
+alias rmrtlan=&quot;sudo route del default enp0s31f6&quot;
+alias scrnoff=&quot;xset dpms force off &quot;
+alias printpath=&quot;echo $PATH | tr : \\n&quot;
+alias lstcp=&quot;lsof -i -n -P | grep TCP&quot;
+
+# list top 5 files/ folders
+
+du -h | sort -rh | head -n 5
+# list only directories
+ls -l | grep ^d
+
+# tree list
+find . -type d |sed 's:[^-][^/]*/:--:g; s:^-: |:'
+
+
+find / -name file1  # 从 '/' 开始进入根文件系统搜索文件和目录
+find / -user user1  # 搜索属于用户 'user1' 的文件和目录
+find /home/user1 -name \*.bin    # 在目录 '/ home/user1' 中搜索带有'.bin' 结尾的文件
+find /usr/bin -type f -atime +100   # 搜索在过去 100 天内未被使用过的执行文件
+find /usr/bin -type f -mtime -10   #    搜索在 10 天内被创建或者修改过的文件
+find / -name *.rpm -exec chmod 755 '{}' \;  # 搜索以 '.rpm' 结尾的文件并定义其权限
+find / -xdev -name \*.rpm   # 搜索以 '.rpm' 结尾的文件，忽略光驱、捷盘等可移动设备
+find ./code -name &quot;*.c&quot; |xargs grep -in &quot;hello&quot; # 在~/code 目录搜索并显示文件名后缀为.c 并且包含字符串 hello 的文件和行数
+find . -type f -exec chmod 644 {} \;  # 文件加 644
+find . -type d -exec chmod 755 {} \; # 目录加 755
+find ./ -type f | xargs sudo chmod 644
+
+# display thread
+
+ps -efL
+# display top 5 processes which has taken most memory and cpu resources
+ps -ef --sort -pmem,+pcpu | head -n 6
+# change output format
+ps -eo pic,user,args
+# monitor threads of process with name contains java
+pidstat -C java -t
+
+sudo localectl set-locale.utf8
+
+wget -e use_proxy=on --no-check-certificate https://nodejs.org/dist/v5.1.0/node-v5.1.0-x64.msi
+wget -t0 -c --no-check-certificate http://mirror.bit.edu.cn/apache/kafka/0.10.0.0/kafka_2.11-0.10.0.0.tgz -O ~/Downloads/kafka.tgz
+
+# yum install and yum local install can both be replaced with:
+sudo dnf install &lt;anypackage&gt;
+
+# list services
+
+systemctl list-unit-files | grep smb
+# config service to be auto-start
+systemctl enable smb.service
+# start service
+systemctl start service
+# stop servie
+systemctl stop service
+# disable service
+systemctl disable service
+</code></pre>
+
+</div>
+</article>
+
+</main>
+
+<script>window.BASE_URL = "";</script>
+<script src="/prism/prism.min.js"></script>
+<script src="/js/main.js"></script>
+</body>
+</html>

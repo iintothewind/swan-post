@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>compilation error when using Comparator.comparing() - 我的博客</title>
+<link rel="stylesheet" href="/prism/prism-monokai.min.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<button id="sidebar-toggle" aria-label="打开菜单">☰</button>
+
+<aside id="sidebar">
+<div class="sidebar-header">
+<a href="/index.html" class="site-title">我的博客</a>
+</div>
+<div class="sidebar-tabs">
+<button class="tab-btn active" data-tab="timeline">时间线</button>
+<button class="tab-btn" data-tab="tags">标签</button>
+</div>
+<div id="tab-timeline" class="tab-panel active">
+<ul id="post-list-timeline" class="post-list"></ul>
+</div>
+<div id="tab-tags" class="tab-panel">
+<div id="tag-cloud"></div>
+<ul id="post-list-by-tag" class="post-list"></ul>
+</div>
+</aside>
+
+<div id="overlay-mask"></div>
+
+<main id="content">
+<article class="post">
+<a href="/index.html" class="back-home">← 返回首页</a>
+<h1>compilation error when using Comparator.comparing()</h1>
+<div class="post-meta">
+<span class="post-date">2019-12-10</span>
+<span class="post-tags"><span class="tag-pill">java</span></span>
+</div>
+<div class="post-body">
+<h2>the problem</h2>
+<p>First, lets take a look at the following code sample:</p>
+<pre><code class="language-java">Collections.sort(playlist, Comparator.comparing(s -&gt; s.getTitle())
+              .thenComparing(p1 -&gt; p1.getDuration())
+              .thenComparing(p1 -&gt; p1.getArtist())
+);
+</code></pre>
+<p>What we are trying to do is simple: sort the <code>playlist</code> order by three different properties.
+Can this code snippet pass the compilation check?
+The answer is: No, there would be some compilation error.</p>
+<pre><code class="language-java">Error:(43, 59) java: cannot find symbol
+  symbol:   method getTitle()
+  location: variable s of type java.lang.Object
+</code></pre>
+<p>But why?</p>
+<p>The reason for this compilation error is that the type inference for Java language is weak in this case.
+It is expected that JVM knows what the type of the elements in <code>playlist</code> is when it is reading the first lambda <code>s-&gt;s.getTitle()</code>.
+But actually, JVM is not able to figure it out.</p>
+<h2>the solutions</h2>
+<p>There are three approaches to solve this problem.</p>
+<h3>use static lambda expression</h3>
+<pre><code class="language-java">Collections.sort(playlist, Comparator.comparing(Song::getTitle)
+              .thenComparing(Song::getDuration)
+              .thenComparing(Song::getArtist)
+);
+</code></pre>
+<h3>use explicitly defined lambda with a temorary variable</h3>
+<pre><code class="language-java">Comparator&lt;Song&gt; byName = (song1, song2) -&gt; song1.getArtist().compareTo(song2.getArtist());
+Comparator&lt;Song&gt; byDuration = (song1, song2) -&gt; Integer.compare(song1.getDuration(), song2.getDuration());
+Collections.sort(playlist, byName.thenComparing(byDuration));
+</code></pre>
+<h3>add explicity type parameter before the Comparator.comparing() is called</h3>
+<pre><code class="language-java">Collections.sort(playlist, Comparator.&lt;Song, String&gt;comparing((s) -&gt; s.getTitle())
+              .thenComparing(p1 -&gt; p1.getDuration())
+              .thenComparing(p1 -&gt; p1.getArtist())
+);
+</code></pre>
+<h2>reference</h2>
+<p><a href="http://stackoverflow.com/questions/24436871/very-confused-by-java-8-comparator-type-inference">Very confused by Java 8 Comparator type inference</a></p>
+
+</div>
+</article>
+
+</main>
+
+<script>window.BASE_URL = "";</script>
+<script src="/prism/prism.min.js"></script>
+<script src="/js/main.js"></script>
+</body>
+</html>

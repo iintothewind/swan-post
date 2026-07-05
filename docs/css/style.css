@@ -66,6 +66,10 @@ display: block;
 .sidebar-header {
 padding: 0 20px 12px;
 border-bottom: 1px solid var(--border);
+position: sticky;
+top: 0;
+background: #fafafa;
+z-index: 1;
 }
 
 .site-title {
@@ -145,10 +149,9 @@ border-color: var(--accent);
 }
 
 #content {
-max-width: 80vw;
-min-width: 600px;
+max-width: 760px;
 margin: 0 auto;
-padding: 80px 40px 60px;
+padding: 80px 24px 60px;
 }
 
 .post-meta {

@@ -25,7 +25,7 @@ console.log("没有检测到任何文件变化，无需部署。");
 return;
 }
 
-const commitMsg = message || ("deploy: " + new Date().toISOString());
+const commitMsg = (message || ("deploy: " + new Date().toISOString())).replace(/"/g, "'");
 
 console.log("== 第 3 步：git add -A ==");
 runInherit("git add -A");

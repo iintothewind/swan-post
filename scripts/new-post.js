@@ -9,8 +9,9 @@ process.exit(1);
 const dir = path.join(process.cwd(), "source", "_posts");
 fs.ensureDirSync(dir);
 const today = new Date();
-const dateStr = today.toISOString().slice(0, 19).replace("T", " ");
-const filename = today.toISOString().slice(0, 10) + "-" + slug + ".md";
+const pad = (n) => String(n).padStart(2, "0");
+const dateStr = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate()) + " " + pad(today.getHours()) + ":" + pad(today.getMinutes()) + ":" + pad(today.getSeconds());
+const filename = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate()) + "-" + slug + ".md";
 const filePath = path.join(dir, filename);
 
 if (fs.existsSync(filePath)) {

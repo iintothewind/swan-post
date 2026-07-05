@@ -13,11 +13,23 @@ const MIME = {
 };
 
 function serve(port) {
-const root = path.join(process.cwd(), "docs");
+const root = path.resolve(process.cwd(), "docs");
 const server = http.createServer((req, res) => {
-let urlPath = decodeURIComponent(req.url.split("?")[0]);
+let urlPath;
+try {
+urlPath = decodeURIComponent(req.url.split("?")[0]);
+} catch {
+res.writeHead(400);
+res.end("Bad Request");
+return;
+}
 if (urlPath === "/") urlPath = "/index.html";
-const filePath = path.join(root, urlPath);
+const filePath = path.resolve(root, urlPath.slice(1));
+if (!filePath.startsWith(root + path.sep) && filePath !== root) {
+res.writeHead(403);
+res.end("Forbidden");
+return;
+}
 fs.readFile(filePath, (err, data) => {
 if (err) {
 res.writeHead(404);

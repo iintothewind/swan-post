@@ -15,9 +15,7 @@ const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.
 const indexTpl = fs.readFileSync(path.join(process.cwd(), "templates", "index.html"), "utf-8");
 
 const recentCount = config.recentPostsCount || 10;
-// 格式化日期
-const postsFormatted = postsIndexSorted.map(post => ({ ...post, formattedDate: post.date ? new Date(post.date).toISOString().split("T")[0] : "" }));
-const recentPostsHtml = renderRecentPostsHtml(postsFormatted, recentCount, config);
+const recentPostsHtml = renderRecentPostsHtml(postsIndexSorted, recentCount, config);
 
 const homeContent = renderTemplate(indexTpl, {
 SITE_TITLE: config.title,
@@ -42,6 +40,7 @@ fs.emptyDirSync(docsDir);
 fs.ensureDirSync(path.join(docsDir, "posts"));
 fs.ensureDirSync(path.join(docsDir, "css"));
 fs.ensureDirSync(path.join(docsDir, "js"));
+fs.ensureDirSync(path.join(docsDir, "prism"));
 
   // 2. 拷贝静态资源
   fs.copySync(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
@@ -62,7 +61,8 @@ const postHtml = renderTemplate(postTpl, {
 POST_TITLE: post.title,
 POST_DATE_FORMATTED: post.formattedDate,
 POST_TAGS_HTML: renderTagsHtml(post.tags),
-POST_CONTENT_HTML: post.contentHtml
+POST_CONTENT_HTML: post.contentHtml,
+BASE_URL: config.baseUrl
 });
 const fullHtml = renderTemplate(layoutTpl, {
 PAGE_TITLE: post.title,

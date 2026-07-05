@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>首页 - 我的博客</title>
+<link rel="stylesheet" href="/prism/prism-monokai.min.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<button id="sidebar-toggle" aria-label="打开菜单">☰</button>
+
+<aside id="sidebar">
+<div class="sidebar-header">
+<a href="/index.html" class="site-title">我的博客</a>
+</div>
+<div class="sidebar-tabs">
+<button class="tab-btn active" data-tab="timeline">时间线</button>
+<button class="tab-btn" data-tab="tags">标签</button>
+</div>
+<div id="tab-timeline" class="tab-panel active">
+<ul id="post-list-timeline" class="post-list"></ul>
+</div>
+<div id="tab-tags" class="tab-panel">
+<div id="tag-cloud"></div>
+<ul id="post-list-by-tag" class="post-list"></ul>
+</div>
+</aside>
+
+<div id="overlay-mask"></div>
+
+<main id="content">
+<div class="home">
+<h1>我的博客</h1>
+<p class="home-desc">个人博客</p>
+<div class="recent-posts">
+<article class="recent-post-item">
+<h2><a href="/posts/2026-07-04-syntax-demo.html">语法高亮演示</a></h2>
+<div class="post-meta">
+<span class="post-date">2026-07-04</span>
+<span class="post-tags"><span class="tag-pill">demo</span></span>
+</div>
+<p class="post-excerpt">代码高亮 function sayHello(name) {} .box { color: blue; }...</p>
+</article>
+<article class="recent-post-item">
+<h2><a href="/posts/2026-07-04-syntax-test.html">语法高亮演示</a></h2>
+<div class="post-meta">
+<span class="post-date">2026-07-04</span>
+<span class="post-tags"><span class="tag-pill">demo</span></span>
+</div>
+<p class="post-excerpt">代码高亮 javascript function sayHello(name) { console.log(Hello, !); } sayHello('World'); python import ...</p>
+</article>
+<article class="recent-post-item">
+<h2><a href="/posts/SOR2XCombo_cn.html">测试语法高亮</a></h2>
+<div class="post-meta">
+<span class="post-date">2026-07-04</span>
+<span class="post-tags"><span class="tag-pill">test</span></span>
+</div>
+<p class="post-excerpt">测试代码高亮 这里是普通段落。 下面是 JavaScript 代码： function greet(name) { console.log(`Hello, ${name}!`); } greet(&q...</p>
+</article>
+<article class="recent-post-item">
+<h2><a href="/posts/SOR2XCombo_en.html">Streets of Rage SOR2XCombo EN</a></h2>
+<div class="post-meta">
+<span class="post-date">2026-06-20</span>
+<span class="post-tags"><span class="tag-pill">game</span></span>
+</div>
+<p class="post-excerpt">Streets of Rage SOR2XCombo Introduction SOR2XCombo is a MOD for SOR2X, a side-scrolling beat-'em-up ...</p>
+</article>
+<article class="recent-post-item">
+<h2><a href="/posts/fix-cors-problem-caused-by-shiro.html">fixed CORS problem caused by shiro</a></h2>
+<div class="post-meta">
+<span class="post-date">2024-09-06</span>
+<span class="post-tags"><span class="tag-pill">shiro</span><span class="tag-pill">java</span><span class="tag-pill">cors</span></span>
+</div>
+<p class="post-excerpt">problem A developer from a business partner's company reported a CORS issue with our API. The follow...</p>
+</article>
+<article class="recent-post-item">
+<h2><a href="/posts/aws-linux-install-docker.html">aws linux install docker</a></h2>
+<div class="post-meta">
+<span class="post-date">2023-11-20</span>
+<span class="post-tags"><span class="tag-pill">linux</span><span class="tag-pill">docker</span></span>
+</div>
+<p class="post-excerpt">ssh ec2-user@ec2-ip-address-dns-name-here # install docker sudo yum update sudo yum search docker su...</p>
+</article>
+<article class="recent-post-item">
+<h2><a href="/posts/frp.html">frp</a></h2>
+<div class="post-meta">
+<span class="post-date">2023-07-10</span>
+<span class="post-tags"><span class="tag-pill">linux</span><span class="tag-pill">docker</span><span class="tag-pill">frp</span></span>
+</div>
+<p class="post-excerpt">frp docker deployment official docs https://gofrp.org/docs before the work frp contains two parts: t...</p>
+</article>
+<article class="recent-post-item">
+<h2><a href="/posts/use-fastgit-to-boost-git-access.html">use fastgit to boost git access</a></h2>
+<div class="post-meta">
+<span class="post-date">2021-11-09</span>
+<span class="post-tags"><span class="tag-pill">linux</span><span class="tag-pill">git</span></span>
+</div>
+<p class="post-excerpt">git config --global url.&quot;https://hub.fastgit.org/&quot;.insteadOf &quot;https://github.com/&quo...</p>
+</article>
+<article class="recent-post-item">
+<h2><a href="/posts/ffmpeg-useful-commands.html">ffmpeg useful commands</a></h2>
+<div class="post-meta">
+<span class="post-date">2021-10-29</span>
+<span class="post-tags"><span class="tag-pill">ffmpeg</span></span>
+</div>
+<p class="post-excerpt">Convert MP3 to OGG ffmpeg -i input.mp3 -acodec libopus -b:a 64k -compression_level 10 -application v...</p>
+</article>
+<article class="recent-post-item">
+<h2><a href="/posts/set-user-and-group-in-docker-compose.html">set user and group in docker compose</a></h2>
+<div class="post-meta">
+<span class="post-date">2021-09-11</span>
+<span class="post-tags"><span class="tag-pill">docker</span></span>
+</div>
+<p class="post-excerpt">Step 1: Add user entry in docker-compose.yml version: '3' services: app: image: alpine user: &quot;$...</p>
+</article>
+</div>
+</div>
+
+</main>
+
+<script>window.BASE_URL = "";</script>
+<script src="/prism/prism.min.js"></script>
+<script src="/js/main.js"></script>
+</body>
+</html>

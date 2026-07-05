@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>the reason of NoClassDefFoundError and how to fix it - 我的博客</title>
+<link rel="stylesheet" href="/prism/prism-monokai.min.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<button id="sidebar-toggle" aria-label="打开菜单">☰</button>
+
+<aside id="sidebar">
+<div class="sidebar-header">
+<a href="/index.html" class="site-title">我的博客</a>
+</div>
+<div class="sidebar-tabs">
+<button class="tab-btn active" data-tab="timeline">时间线</button>
+<button class="tab-btn" data-tab="tags">标签</button>
+</div>
+<div id="tab-timeline" class="tab-panel active">
+<ul id="post-list-timeline" class="post-list"></ul>
+</div>
+<div id="tab-tags" class="tab-panel">
+<div id="tag-cloud"></div>
+<ul id="post-list-by-tag" class="post-list"></ul>
+</div>
+</aside>
+
+<div id="overlay-mask"></div>
+
+<main id="content">
+<article class="post">
+<a href="/index.html" class="back-home">← 返回首页</a>
+<h1>the reason of NoClassDefFoundError and how to fix it</h1>
+<div class="post-meta">
+<span class="post-date">2020-05-08</span>
+<span class="post-tags"><span class="tag-pill">java</span></span>
+</div>
+<div class="post-body">
+<h2>problem</h2>
+<p>Recently some team members reported that some instances of our application occasionally failed to serve an upload request because it constantly threw the same error:</p>
+<pre><code class="language-Java">st=java.lang.NoClassDefFoundError: Could not initialize class xxx.SomeUtil
+at xxxImpl.upload(xxx.Java:xxx)
+at sun.reflect.GeneratedMethodAccessor106.invoke(Unknown Source) at
+..........
+..........
+</code></pre>
+<h2>code with issues</h2>
+<p>While this <code>SomeUtil</code> has been implemented like as below:</p>
+<pre><code class="language-Java">public class SomeUtil {
+  private static Map&lt;String, String&gt; entries = ImmutableMap.of();
+
+  static {
+    loadEntries();
+  }
+
+  private static void loadEntries() {
+    try {
+      entries = DbAccess.loadEntries();
+    } catch (Exception e) {
+      log.error(&quot;loadEntries error: {}&quot;, e.getMessage());
+      throw new IllegalStateException(e);
+    }
+  }
+
+  public static String getEntry(@NonNull String key) {
+    // .....
+    String result = entries.getOrDefault(key, &quot;&quot;);
+    // .....
+    return result;
+  }
+}
+</code></pre>
+<p>The util class <code>SomeUtil</code> is trying to load entries from database in static block.
+The entries will be loaded only once when the first time  class <code>SomeUtil</code> is invoked.
+If anything goes wrong with the databse access, <code>IllegalStateException</code> will be thrown from the method <code>loadEntries()</code>.</p>
+<h2>analysis</h2>
+<p>From the code above, it is obviously that the method <code>loadEntries()</code> is suspicious.
+Since it could throw <code>IllegalStateException</code> when database access failed.</p>
+<p>So I made a little change to the method and tried to reproduce the exception:</p>
+<pre><code class="language-Java">  private static void loadEntries() {
+    try {
+      //entries = DbAccess.loadEntries();
+      throw new RuntimeException(&quot;db access error&quot;);
+    } catch (Exception e) {
+      log.error(&quot;loadEntries error: {}&quot;, e.getMessage());
+      throw new IllegalStateException(e);
+    }
+  }
+</code></pre>
+<p>Then I wrote a unit test as:</p>
+<pre><code class="language-Java">@Test
+public void testStaticBlock() {
+  SomeUtil.getEntry(&quot;some-key&quot;);
+}
+</code></pre>
+<p>After I ran the test, I found it did throw an error but not the same as <code>java.lang.NoClassDefFoundError</code> as reported:</p>
+<pre><code class="language-Java">java.lang.ExceptionInInitializerError
+	at sample.SomeTest.testStaticBlock(EventButTest.java:46)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+Caused by: java.lang.IllegalStateException: java.lang.RuntimeException: db access error
+</code></pre>
+<p>Why the error is <code>ExceptionInInitializerError</code> but not <code>NoClassDefFoundError</code>?
+I thought it over and over.
+When I tried to think <code>loadEntries()</code> might not be the root cause and tried some where elese,
+I suddely realised this <code>NoClassDefFoundError</code> may have been thrown many times again and again.
+Why don't try to call <code>loadEntries()</code> multiple times?
+Then I made below changes to the test code:</p>
+<pre><code class="language-Java">@Test
+public void testStaticBlock() {
+  try{
+    SomeUtil.getEntry(&quot;some-key&quot;);
+  } catch (Throwable t) {
+    // do nothing
+  }
+  SomeUtil.getEntry(&quot;some-key&quot;);
+}
+</code></pre>
+<p>And ran the test then finally I can reproduce the same error as reported:</p>
+<pre><code class="language-java">java.lang.NoClassDefFoundError: Could not initialize class test.SomeUtil
+</code></pre>
+<h2>root cause</h2>
+<p>So now we can confirm that method <code>loadEntries()</code> really is the root cause.
+Since the first time when this method is called in static block, some how there was a database access error.
+Due to this db error, the initialization of the <code>SomeUtil</code> class failed.
+Since static block can only be run once.
+Then after this failure, when more upload request calls come, more <code>NoClassDefFoundError</code> will be produced.</p>
+<h2>solution</h2>
+<p>We can either remove the static block, and change the load logic to call <code>loadEntries()</code> when <code>getEntry()</code> is called in this method. We should check the size of <code>entries</code>. When size of <code>entries</code> is empty, call <code>loadEntries()</code> to update the state of <code>entries</code>.</p>
+<p>Alternatively, we can keep the static block, but ensure no <code>Throwable</code> is thrown in this static block.
+Let <code>getEntry()</code> handle the state when <code>entries</code> is empty.</p>
+<h2>conclusion</h2>
+<ul>
+<li>
+<p>Getting <code>NoClassDefFoundError</code> does NOT mean that you class is missing (in that case you'd get a <code>ClassNotFoundException</code>). <code>NoClassDefFoundError</code> means class loader ran into an error while reading the class definition when trying to read the class.</p>
+</li>
+<li>
+<p>In this above case, you can reproduce the same error by invoke the issue method more than one time. (catch the first <code>ExceptionInInitializerError</code> to avoid code breaks at the first time).</p>
+</li>
+<li>
+<p>Avoid throwing exception or error in static block when you try to use it.</p>
+</li>
+</ul>
+
+</div>
+</article>
+
+</main>
+
+<script>window.BASE_URL = "";</script>
+<script src="/prism/prism.min.js"></script>
+<script src="/js/main.js"></script>
+</body>
+</html>
