@@ -30,8 +30,8 @@ return {
 title: data.title || slug,
 date: dateStr,
 formattedDate,
-tags: data.tags || [],
-categories: data.categories || [],
+tags: Array.isArray(data.tags) ? data.tags : (typeof data.tags === "string" && data.tags.trim() ? [data.tags] : []),
+categories: Array.isArray(data.categories) ? data.categories : (typeof data.categories === "string" && data.categories.trim() ? [data.categories] : []),
 slug,
 contentHtml,
 excerpt

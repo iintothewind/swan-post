@@ -10,16 +10,20 @@ function renderOne(mdFilePath) {
 const config = loadConfig();
 const docsDir = path.join(process.cwd(), "docs");
 
-// 1. 如果 docs 目录还不存在基础结构，先做最基础的初始化 (css/js/posts 目录)
+// 1. 如果 docs 目录还不存在基础结构，先做最基础的初始化 (css/js/prism/posts 目录)
 fs.ensureDirSync(path.join(docsDir, "posts"));
 fs.ensureDirSync(path.join(docsDir, "css"));
 fs.ensureDirSync(path.join(docsDir, "js"));
+fs.ensureDirSync(path.join(docsDir, "prism"));
 // 只在文件不存在时才拷贝，避免覆盖用户可能已手动更新的资源
 if (!fs.existsSync(path.join(docsDir, "css", "style.css"))) {
 fs.copySync(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
 }
 if (!fs.existsSync(path.join(docsDir, "js", "main.js"))) {
 fs.copySync(path.join(process.cwd(), "assets", "js"), path.join(docsDir, "js"));
+}
+if (!fs.existsSync(path.join(docsDir, "prism", "prism.min.js"))) {
+fs.copySync(path.join(process.cwd(), "assets", "prism"), path.join(docsDir, "prism"));
 }
 
 // 2. 解析这一篇 markdown

@@ -43,9 +43,10 @@ fs.ensureDirSync(path.join(docsDir, "posts"));
 fs.ensureDirSync(path.join(docsDir, "css"));
 fs.ensureDirSync(path.join(docsDir, "js"));
 
-// 2. 拷贝静态资源
-fs.copySync(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
-fs.copySync(path.join(process.cwd(), "assets", "js"), path.join(docsDir, "js"));
+  // 2. 拷贝静态资源
+  fs.copySync(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
+  fs.copySync(path.join(process.cwd(), "assets", "js"), path.join(docsDir, "js"));
+  fs.copySync(path.join(process.cwd(), "assets", "prism"), path.join(docsDir, "prism"));
 
 // 3. 读取文章模板 (布局模板和首页模板留到生成首页那一步再读，由 renderHomepage 内部处理)
 const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
