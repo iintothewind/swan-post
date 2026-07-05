@@ -32,7 +32,7 @@ const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.
 
 const postHtml = renderTemplate(postTpl, {
 POST_TITLE: post.title,
-POST_DATE: post.date,
+POST_DATE_FORMATTED: post.formattedDate,
 POST_TAGS_HTML: renderTagsHtml(post.tags),
 POST_CONTENT_HTML: post.contentHtml
 });

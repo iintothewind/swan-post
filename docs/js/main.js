@@ -46,7 +46,7 @@ function buildPostItem(post) {
 var li = document.createElement("li");
 var a = document.createElement("a");
 a.href = BASE_URL + "/" + post.url;
-a.innerHTML = post.title + '<span class="post-item-date">' + post.date + "</span>";
+a.innerHTML = post.title + '<span class="post-item-date">' + post.formattedDate + "</span>";
 li.appendChild(a);
 return li;
 }

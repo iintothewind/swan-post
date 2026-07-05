@@ -145,9 +145,10 @@ border-color: var(--accent);
 }
 
 #content {
-max-width: 760px;
+max-width: 80vw;
+min-width: 600px;
 margin: 0 auto;
-padding: 80px 24px 60px;
+padding: 80px 40px 60px;
 }
 
 .post-meta {
@@ -213,4 +214,22 @@ color: var(--accent);
 color: #555;
 margin: 10px 0 0;
 font-size: 14px;
+}
+
+.back-home {
+display: inline-block;
+margin: 0 0 16px;
+padding: 6px 12px;
+background: #f5f5f5;
+color: var(--accent);
+text-decoration: none;
+border-radius: 6px;
+font-size: 13px;
+font-weight: 500;
+transition: background 0.2s;
+}
+
+.back-home:hover {
+background: var(--accent);
+color: #fff;
 }

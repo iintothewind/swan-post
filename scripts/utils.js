@@ -21,9 +21,12 @@ const slug = path.basename(filePath, ".md");
 const contentHtml = md.render(content);
 const plainText = content.replace(/[#*`>\-\[\]!]/g, "").replace(/\n+/g, " ").trim();
 const excerpt = plainText.slice(0, 100);
+const dateStr = data.date ? String(data.date) : "";
+const formattedDate = dateStr ? new Date(dateStr).toISOString().split("T")[0] : "";
 return {
 title: data.title || slug,
-date: data.date ? String(data.date) : "",
+date: dateStr,
+formattedDate,
 tags: data.tags || [],
 categories: data.categories || [],
 slug,
@@ -73,13 +76,13 @@ return '<p class="post-excerpt">还没有发布任何文章。</p>';
 }
 return list.map((post) => {
 return `<article class="recent-post-item">
-<h2><a href="${config.baseUrl}/${post.url}">${post.title}</a></h2>
+<h2><a href="${config.baseUrl}/${post.url}">${post.title}<span class="post-item-date">${post.formattedDate}</span></a></h2>
 <div class="post-meta">
-<span class="post-date">${post.date}</span>
+<span class="post-date">${post.formattedDate}</span>
 <span class="post-tags">${renderTagsHtml(post.tags)}</span>
 </div>
 <p class="post-excerpt">${post.excerpt}...</p>
-</article>`;
+</article>`
 }).join("\n");
 }
 
