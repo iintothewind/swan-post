@@ -3,7 +3,10 @@ const path = require("path");
 const matter = require("gray-matter");
 const MarkdownIt = require("markdown-it");
 
-const md = new MarkdownIt({ html: true, linkify: true });
+const md = new MarkdownIt({
+html: true,
+linkify: true,
+});
 
 // 读取 blog.config.json，返回配置对象
 function loadConfig() {
@@ -57,12 +60,13 @@ return fs.readdirSync(dir)
 
 // 把 tags 数组渲染成 HTML: <span class="tag-pill">xxx</span> 拼接
 function renderTagsHtml(tags) {
-return (tags || []).map((t) => `<span class="tag-pill">${t}</span>`).join("");
+const list = Array.isArray(tags) ? tags : (typeof tags === "string" && tags.trim() ? tags.split(",").map((s) => s.trim()).filter(Boolean) : []);
+return list.map((t) => `<span class="tag-pill">${t}</span>`).join("");
 }
 
 // 按 date 字段对文章数组做倒序排序 (最新在前)，返回新数组，不修改传入的原数组
 function sortPostsByDateDesc(posts) {
-return posts.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+return posts.slice().sort((a, b) => (b.formattedDate || "").localeCompare(a.formattedDate || ""));
 }
 
 // 生成首页"最近文章"列表的 HTML。
@@ -76,7 +80,7 @@ return '<p class="post-excerpt">还没有发布任何文章。</p>';
 }
 return list.map((post) => {
 return `<article class="recent-post-item">
-<h2><a href="${config.baseUrl}/${post.url}">${post.title}<span class="post-item-date">${post.formattedDate}</span></a></h2>
+<h2><a href="${config.baseUrl}/${post.url}">${post.title}</a></h2>
 <div class="post-meta">
 <span class="post-date">${post.formattedDate}</span>
 <span class="post-tags">${renderTagsHtml(post.tags)}</span>
