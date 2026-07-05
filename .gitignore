@@ -18,5 +18,8 @@ Thumbs.db
 # 环境变量
 .env
 
+# 构建产物
+docs/
+
 # 部署用的临时 clone
 .deploy/

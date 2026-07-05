@@ -25,9 +25,9 @@ build();
 console.log("== 第 2 步：同步 GitHub Pages 仓库 ==");
 if (!fs.existsSync(path.join(deployDir, ".git"))) {
 fs.ensureDirSync(deployDir);
-execSync(`git clone --depth 1 "${repoUrl}" "${deployDir}"`, { stdio: "inherit" });
+execSync('git clone --depth 1 "' + repoUrl + '" "' + deployDir + '"', { stdio: "inherit" });
 } else {
-execSync(`git -C "${deployDir}" pull --ff-only`, { stdio: "inherit" });
+execSync('git -C "' + deployDir + '" pull --ff-only', { stdio: "inherit" });
 }
 
 // 第 3 步：替换 Pages 仓库内容为构建产物
@@ -37,29 +37,17 @@ if (f !== ".git") fs.removeSync(path.join(deployDir, f));
 });
 fs.copySync(docsDir, deployDir);
 
-// 第 4 步：推送 Pages 仓库
+// 第 4 步：提交并强制推送到 Pages 仓库
+// 使用 force push 安全，因为 Pages 仓库内容全部由构建生成，无需保留历史
 console.log("== 第 4 步：推送到 GitHub Pages ==");
 var status = execSync('git -C "' + deployDir + '" status --porcelain', { encoding: "utf-8" }).trim();
 if (status) {
 execSync('git -C "' + deployDir + '" add -A', { stdio: "inherit" });
 execSync('git -C "' + deployDir + '" commit -m "' + commitMsg + '"', { stdio: "inherit" });
-execSync('git -C "' + deployDir + '" push', { stdio: "inherit" });
-console.log("已推送到 GitHub Pages 仓库。");
+execSync('git -C "' + deployDir + '" push --force', { stdio: "inherit" });
+console.log("已推送到 GitHub Pages。");
 } else {
 console.log("没有文件变化，跳过推送。");
-}
-
-// 第 5 步：提交并推送源码仓库
-console.log("== 第 5 步：提交源码仓库 ==");
-var srcStatus = execSync("git status --porcelain", { encoding: "utf-8" }).trim();
-if (srcStatus) {
-execSync("git add -A", { stdio: "inherit" });
-execSync('git commit -m "' + commitMsg + '"', { stdio: "inherit" });
-var branch = execSync("git rev-parse --abbrev-ref HEAD", { encoding: "utf-8" }).trim();
-execSync("git push origin " + branch, { stdio: "inherit" });
-console.log("源码仓库已提交并推送。");
-} else {
-console.log("源码仓库无变化，跳过。");
 }
 
 console.log("部署完成。GitHub Pages 通常需要 1~2 分钟生效。");
