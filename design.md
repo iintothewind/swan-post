@@ -112,9 +112,15 @@ Thumbs.db
 
 # 环境变量
 .env
+
+# 构建产物 —— 通过 deploy 命令推送到单独的 GitHub Pages 仓库
+docs/
+
+# deploy 命令使用的临时 Pages 仓库 clone
+.deploy/
 ```
 
-**注意:`docs/` 目录不要写进 `.gitignore`。** 它是构建产物,但同时也是 GitHub Pages 的发布来源(Settings → Pages → Source 设为 `/docs`),必须提交到 git 仓库里,`deploy` 命令依赖它被 git 追踪才能正常 `git add`。
+**注意：** 源码仓库和 Pages 仓库分离。`docs/` 是构建产物,不提交到源码仓库（`swan-post`）,由 `deploy` 命令推送到独立的 GitHub Pages 仓库（`<user>.github.io`）。
 
 ---
 
@@ -126,12 +132,14 @@ Thumbs.db
   "author": "Ivar",
   "description": "个人博客",
   "baseUrl": "",
-  "recentPostsCount": 10
+  "recentPostsCount": 10,
+  "deployTarget": "git@github.com:username/username.github.io.git"
 }
 ```
 
 - `baseUrl`:如果博客部署在 `https://username.github.io/`(根域名),`baseUrl` 留空字符串 `""`。如果部署在 `https://username.github.io/reponame/`(项目页面),`baseUrl` 设为 `"/reponame"`。
 - `recentPostsCount`:首页正文区域展示的"最近文章"数量,默认为 `10`。改这个数字不需要改代码,构建脚本读取配置时如果该字段缺失,兜底使用 `10`。
+- `deployTarget`:GitHub Pages 仓库的 SSH URL。部署命令会将构建产物推送到此仓库。源码仓库（`swan-post`）和 Pages 仓库分离。
 - 所有模板里引用静态资源时,必须拼接 `{{BASE_URL}}` 前缀(见第 5 节),这样无论根域名还是子路径都能正确工作,**不要写死绝对路径或相对路径 `../`**。
 
 ---
@@ -981,65 +989,80 @@ module.exports = { serve };
 
 ### 7.6 `scripts/deploy.js`(构建 + git 提交 + push,触发 GitHub Pages 更新)
 
-**这是新增需求:一条命令完成"重新构建 → git 提交 → 推送到远程",不需要手动敲 git 命令。**
+**一条命令完成"构建 → 推送到独立 Pages 仓库"。源码仓库（`swan-post`）和 Pages 仓库（`<user>.github.io`）分离。**
 
 ```javascript
 const { execSync } = require("child_process");
+const path = require("path");
+const fs = require("fs-extra");
 const { build } = require("./build");
-
-function runInherit(cmd) {
-  execSync(cmd, { stdio: "inherit" });
-}
-
-function runCapture(cmd) {
-  return execSync(cmd, { stdio: ["pipe", "pipe", "pipe"] }).toString().trim();
-}
-
-function hasUncommittedChanges() {
-  const status = runCapture("git status --porcelain");
-  return status.length > 0;
-}
+const { loadConfig } = require("./utils");
 
 function deploy(message) {
-  try {
-    console.log("== 第 1 步:重新构建站点 ==");
-    build();
+const config = loadConfig();
+const repoUrl = config.deployTarget;
+if (!repoUrl) {
+console.error("请在 blog.config.json 中设置 deployTarget（你的 GitHub Pages 仓库地址）");
+process.exit(1);
+}
 
-    console.log("== 第 2 步:检查 git 状态 ==");
-    if (!hasUncommittedChanges()) {
-      console.log("没有检测到任何文件变化,无需部署。");
-      return;
-    }
+const docsDir = path.join(process.cwd(), "docs");
+const deployDir = path.join(process.cwd(), ".deploy");
+const commitMsg = (message || ("deploy: " + new Date().toISOString())).replace(/"/g, "'");
 
-    const commitMsg = message || ("deploy: " + new Date().toISOString());
+try {
+// 第 1 步：构建
+console.log("== 第 1 步：重新构建站点 ==");
+build();
 
-    console.log("== 第 3 步:git add -A ==");
-    runInherit("git add -A");
+// 第 2 步：克隆/拉取目标 Pages 仓库到 .deploy/
+console.log("== 第 2 步：同步 GitHub Pages 仓库 ==");
+if (!fs.existsSync(path.join(deployDir, ".git"))) {
+fs.ensureDirSync(deployDir);
+execSync('git clone --depth 1 "' + repoUrl + '" "' + deployDir + '"', { stdio: "inherit" });
+} else {
+execSync('git -C "' + deployDir + '" pull --ff-only', { stdio: "inherit" });
+}
 
-    console.log(`== 第 4 步:git commit -m "${commitMsg}" ==`);
-    runInherit(`git commit -m "${commitMsg}"`);
+// 第 3 步：替换 Pages 仓库内容为构建产物
+console.log("== 第 3 步：更新静态文件 ==");
+fs.readdirSync(deployDir).forEach(function (f) {
+if (f !== ".git") fs.removeSync(path.join(deployDir, f));
+});
+fs.copySync(docsDir, deployDir);
 
-    console.log("== 第 5 步:git push ==");
-    const branch = runCapture("git rev-parse --abbrev-ref HEAD");
-    runInherit(`git push origin ${branch}`);
+// 第 4 步：提交并强制推送到 Pages 仓库
+console.log("== 第 4 步：推送到 GitHub Pages ==");
+var status = execSync('git -C "' + deployDir + '" status --porcelain', { encoding: "utf-8" }).trim();
+if (status) {
+execSync('git -C "' + deployDir + '" add -A', { stdio: "inherit" });
+execSync('git -C "' + deployDir + '" commit -m "' + commitMsg + '"', { stdio: "inherit" });
+execSync('git -C "' + deployDir + '" push --force', { stdio: "inherit" });
+console.log("已推送到 GitHub Pages。");
+} else {
+console.log("没有文件变化，跳过推送。");
+}
 
-    console.log("部署完成。GitHub Pages 通常需要 1~2 分钟生效,过一会刷新网站查看。");
-  } catch (err) {
-    console.error("部署失败:", err.message);
-    console.error("请检查:1) 是否已执行 git init 并 git remote add origin <仓库地址>;2) 是否有推送权限;3) 是否有未解决的 git 冲突。");
-    process.exit(1);
-  }
+console.log("部署完成。GitHub Pages 通常需要 1~2 分钟生效。");
+} catch (err) {
+console.error("部署失败:", err.message);
+process.exit(1);
+}
 }
 
 module.exports = { deploy };
 ```
 
 行为说明:
-- `deploy` 每次都会先执行完整的 `build()`,保证提交的 `docs/` 内容一定是最新的,不依赖用户提前手动 build。
-- 如果 `git status --porcelain` 为空(没有任何改动),直接打印提示并 `return`,不执行 add/commit/push,避免产生空 commit 报错。
-- commit message 支持通过参数传入,不传则使用 `deploy: <ISO时间戳>`。
-- push 的分支通过 `git rev-parse --abbrev-ref HEAD` 自动获取当前分支,不写死 `main`,避免用户本地分支名不同时出错。
-- 所有 git 命令失败(比如没配置 remote、没有推送权限、有冲突)都会被 catch 住,打印可读的中文错误提示后 `process.exit(1)`,不会抛出裸的 Node 报错栈。
+- `deploy` 每次都会先执行完整的 `build()` 生成 `docs/`,保证内容最新。
+- 通过 `blog.config.json` 的 `deployTarget` 字段指定 Pages 仓库地址,不依赖源码仓库的 `origin` remote。
+- 使用 `git clone --depth 1` 浅克隆到 `.deploy/` 目录（首次），后续运行使用 `git pull --ff-only` 增量更新。
+- 替换 `.deploy/` 全部内容为 `docs/` 构建产物（仅保留 `.git` 目录）。
+- 使用 `git push --force` 推送到 Pages 仓库。因为是纯机器生成的静态文件,不存在多人协作冲突问题,force push 是安全的。
+- commit message 支持通过 `-m` 参数传入,不传则使用 `deploy: <ISO时间戳>`。消息中的双引号会被自动替换为单引号,避免 shell 注入。
+- `docs/` 已加入 `.gitignore`,不会提交到源码仓库。
+- `.deploy/` 已加入 `.gitignore`,临时 clone 不会出现在源码仓库中。
+- 所有 git 命令失败都会被 catch 住,打印可读的中文错误提示后 `process.exit(1)`。
 
 ### 7.7 `scripts/cli.js`(CLI 入口,使用 commander)
 
@@ -1194,7 +1217,7 @@ swp-cli deploy -m "写了一篇新文章"
 - [ ] `node scripts/cli.js build`(或 `npm link` 后的 `swp-cli build`)无报错,生成完整 `docs/` 目录。
 - [ ] `swp-cli new <slug> --title "<标题>"`(或等价的 `node scripts/cli.js new ...`)能正确生成带 front-matter 的 md 文件。
 - [ ] `swp-cli render <file>`(或等价的 `node scripts/cli.js render <file>`)能单独渲染一篇文章并正确更新 `posts.json`(新增和覆盖已存在 slug 两种情况都要测试)。
-- [ ] `swp-cli deploy`(或等价的 `node scripts/cli.js deploy`)在无变更时能正确跳过提交;有变更时能自动完成构建 + git add + commit + push;git 命令出错时能打印可读提示而不是裸异常。
+- [ ] `swp-cli deploy`(或等价的 `node scripts/cli.js deploy`)读取 `blog.config.json` 的 `deployTarget` 配置,克隆 Pages 仓库到 `.deploy/`,替换内容后 force push 到远程;`docs/` 不会提交到源码仓库。git 命令出错时能打印可读提示而不是裸异常。
 - [ ] 首页正文区域(不打开 sidebar)直接服务端渲染显示最近 `recentPostsCount` 篇文章(标题、日期、tag、摘要),而不是靠前端 JS 异步 fetch 后再显示;修改 `recentPostsCount` 并重新 `build` 后,首页展示条数相应变化。
 - [ ] 用 `render` 命令增量渲染单篇文章后,即使不执行 `build`,首页的最近文章列表也会同步更新(因为 `render.js` 内部调用了 `renderHomepage`)。
 - [ ] sidebar 默认隐藏,点击按钮可以打开/关闭。
@@ -1202,7 +1225,7 @@ swp-cli deploy -m "写了一篇新文章"
 - [ ] sidebar 标签视图正确按 tag 分组,点击 tag 能过滤出对应文章列表。
 - [ ] 文章页正确显示标题、日期、tag、Markdown 渲染后的正文(代码块、图片、列表等常见 Markdown 语法均正常渲染)。
 - [ ] 所有页面内的静态资源路径(css/js/posts.json)在 `baseUrl` 为空和非空两种配置下都能正确加载(至少验证 `baseUrl: ""` 这一种,`baseUrl` 非空的情况人工检查代码逻辑是否自洽即可)。
-- [ ] `docs/` 目录可以直接作为 GitHub Pages 的发布目录使用,无需额外构建步骤。
+- [ ] `docs/` 目录是构建产物,已加入 `.gitignore`,不提交到源码仓库。通过 `deploy` 命令推送到独立的 GitHub Pages 仓库。
 
 ---
 

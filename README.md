@@ -51,6 +51,20 @@ swp-cli serve
 
 ### 部署到 GitHub Pages
 
+本工具采用**双仓库模式**：
+- **源码仓库** (`swan-post`)：存放工具代码和 Markdown 文章
+- **Pages 仓库** (`<user>.github.io`)：存放构建产物（静态 HTML/CSS/JS）
+
+先在 `blog.config.json` 中配置 Pages 仓库地址：
+
+```json
+{
+  "deployTarget": "git@github.com:username/username.github.io.git"
+}
+```
+
+然后一条命令部署：
+
 ```bash
 swp-cli deploy
 ```
@@ -61,9 +75,13 @@ swp-cli deploy
 swp-cli deploy -m "写了一篇新文章"
 ```
 
-首次使用前提：仓库已 `git init`，并且已经 `git remote add origin <你的仓库地址>`
+命令执行流程：
+1. 构建站点到 `docs/`
+2. 浅克隆 Pages 仓库到本地 `.deploy/`
+3. 用 `docs/` 内容替换 `.deploy/`
+4. force push 到 Pages 仓库
 
-部署后：在仓库 Settings → Pages 设置 Source 为 main 分支 `/docs` 目录
+> 首次部署前需确保 Pages 仓库已在 GitHub 创建，且你有推送权限。
 
 ## 文章格式
 
@@ -96,8 +114,9 @@ categories: [分类 1]
 }
 ```
 
-- `baseUrl`: 如果博客部署在 `https://username.github.io/`(根域名)，留空字符串 `""`。如果部署在 `https://username.github.io/reponame/`(项目页面)，设为 `"/reponame"`。
+- `baseUrl`: 本地预览时无需设置。部署到 GitHub Pages 时，如果是项目页面（如 `https://username.github.io/reponame/`），设为 `"/reponame"`。
 - `recentPostsCount`: 首页正文区域展示的"最近文章"数量，默认为 `10`。
+- `deployTarget`: GitHub Pages 仓库 SSH 地址，如 `"git@github.com:username/username.github.io.git"`。部署命令会将构建产物推送到此仓库。
 
 ## 目录结构
 
@@ -112,6 +131,7 @@ swan-post/
 │   ├── css/
 │   └── js/
 ├── scripts/
-├── docs/ # GitHub Pages 输出目录
+├── .deploy/ # Pages 仓库临时 clone（自动生成，已 gitignore）
+├── docs/ # 构建产物（已 gitignore，通过 deploy 推送到 Pages 仓库）
 └── README.md
 ```
