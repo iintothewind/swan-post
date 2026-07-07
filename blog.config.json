@@ -4,5 +4,6 @@
   "description": "个人博客",
   "baseUrl": "",
   "recentPostsCount": 10,
+  "sidebarPostCount": 200,
   "deployTarget": "git@github.com:iintothewind/iintothewind.github.io.git"
 }

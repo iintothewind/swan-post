@@ -35,11 +35,12 @@ console.error("加载 posts.json 失败:", err);
 });
 
 function renderTimeline(posts) {
-var ul = document.getElementById("post-list-timeline");
-ul.innerHTML = "";
-posts.forEach(function (post) {
-ul.appendChild(buildPostItem(post));
-});
+  var count = window.SIDEBAR_POST_COUNT || 200;
+  var ul = document.getElementById("post-list-timeline");
+  ul.innerHTML = "";
+  posts.slice(0, count).forEach(function (post) {
+    ul.appendChild(buildPostItem(post));
+  });
 }
 
 function buildPostItem(post) {

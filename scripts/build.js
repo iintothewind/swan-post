@@ -23,10 +23,11 @@ SITE_DESCRIPTION: config.description,
 RECENT_POSTS_HTML: recentPostsHtml
 });
 const homeHtml = renderTemplate(layoutTpl, {
-PAGE_TITLE: "首页",
-SITE_TITLE: config.title,
-BASE_URL: config.baseUrl,
-CONTENT: homeContent
+  PAGE_TITLE: "首页",
+  SITE_TITLE: config.title,
+  BASE_URL: config.baseUrl,
+  SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
+  CONTENT: homeContent
 });
 fs.writeFileSync(path.join(docsDir, "index.html"), homeHtml, "utf-8");
 }
@@ -65,10 +66,11 @@ POST_CONTENT_HTML: post.contentHtml,
 BASE_URL: config.baseUrl
 });
 const fullHtml = renderTemplate(layoutTpl, {
-PAGE_TITLE: post.title,
-SITE_TITLE: config.title,
-BASE_URL: config.baseUrl,
-CONTENT: postHtml
+  PAGE_TITLE: post.title,
+  SITE_TITLE: config.title,
+  BASE_URL: config.baseUrl,
+  SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
+  CONTENT: postHtml
 });
 fs.writeFileSync(path.join(docsDir, "posts", post.slug + ".html"), fullHtml, "utf-8");
 });

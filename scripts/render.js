@@ -42,10 +42,11 @@ POST_CONTENT_HTML: post.contentHtml,
 BASE_URL: config.baseUrl
 });
 const fullHtml = renderTemplate(layoutTpl, {
-PAGE_TITLE: post.title,
-SITE_TITLE: config.title,
-BASE_URL: config.baseUrl,
-CONTENT: postHtml
+  PAGE_TITLE: post.title,
+  SITE_TITLE: config.title,
+  BASE_URL: config.baseUrl,
+  SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
+  CONTENT: postHtml
 });
 const outputPath = path.join(docsDir, "posts", post.slug + ".html");
 fs.writeFileSync(outputPath, fullHtml, "utf-8");
