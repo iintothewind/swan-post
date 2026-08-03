@@ -56,6 +56,7 @@ const index = loadPostsIndex();
 const entry = {
 title: post.title,
 date: post.date,
+formattedDate: post.formattedDate,
 tags: post.tags,
 categories: post.categories,
 slug: post.slug,

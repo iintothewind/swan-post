@@ -15,20 +15,24 @@ return fs.readJsonSync(configPath);
 }
 
 // 解析单个 markdown 文件，返回:
-// { title, date, tags, categories, slug, contentHtml, excerpt }
+// { title, date, formattedDate, tags, categories, slug, contentHtml, excerpt }
 // slug 从文件名去掉 .md 后缀得到
 function parseMarkdownFile(filePath) {
 const raw = fs.readFileSync(filePath, "utf-8");
 const { data, content } = matter(raw);
 const slug = path.basename(filePath, ".md");
 const contentHtml = md.render(content);
-const plainText = contentHtml.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-const excerpt = plainText.slice(0, 100);
+// 生成摘要：剥 HTML 标签 → 解码实体（&amp; → &，用 markdown-it 自带的 unescapeAll，
+// 避免手写不完整的实体表）→ 空白归一 → 按 grapheme 截断 100 个可见字符
+// （Intl.Segmenter 按用户可感知字符切分，不会截出半个 emoji / 代理对）。
+const plainText = md.utils.unescapeAll(contentHtml.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
+const excerpt = truncateGraphemes(plainText, 100);
 const rawDate = data.date instanceof Date ? data.date : (data.date ? new Date(data.date) : null);
 const dateStr = rawDate ? rawDate.toISOString() : "";
-const formattedDate = rawDate
-? rawDate.getFullYear() + "-" + String(rawDate.getMonth() + 1).padStart(2, "0") + "-" + String(rawDate.getDate()).padStart(2, "0")
-: "";
+// 显示日期取 UTC 的 YYYY-MM-DD：js-yaml 把无时区的 front-matter 日期按 UTC 解析（YAML 1.1 规范），
+// 所以 UTC 日期恒等于作者在 front-matter 里写的日期。若用本地时间（getFullYear/getMonth/getDate），
+// 在 UTC+7/8 等时区会把深夜发布的文章显示成"次日"，导致时间线日期错位。
+const formattedDate = rawDate ? rawDate.toISOString().slice(0, 10) : "";
 return {
 title: data.title || slug,
 date: dateStr,
@@ -43,13 +47,35 @@ excerpt
 
 // 简单占位符替换：template 是模板字符串，vars 是 { KEY: value } 对象
 // 把模板中所有 {{KEY}} 替换为 value
+// 注意：替换前先把每个 value 里的 "{{" 打上哨兵，避免 value 中恰好出现的 {{KEY}} 字面量
+// （例如正文里讲到模板引擎时写的 {{PAGE_TITLE}}）被后续占位符的全局替换误伤；
+// 全部替换完成后再把哨兵还原为 "{{"。
+const TEMPLATE_BRACE_SENTINEL = "\u0000SWP_OPEN_BRACE\u0000";
 function renderTemplate(template, vars) {
 let result = template;
+const escaped = {};
 for (const key in vars) {
-const re = new RegExp("{{" + key + "}}", "g");
-result = result.replace(re, vars[key]);
+escaped[key] = String(vars[key]).split("{{").join(TEMPLATE_BRACE_SENTINEL);
 }
-return result;
+for (const key in escaped) {
+const re = new RegExp("{{" + key + "}}", "g");
+result = result.replace(re, escaped[key]);
+}
+return result.split(TEMPLATE_BRACE_SENTINEL).join("{{");
+}
+
+// 按“用户可感知字符”(grapheme) 截断字符串到 n 个字符，
+// 避免 String.prototype.slice 按 UTF-16 code unit 切出半个 emoji / 代理对
+function truncateGraphemes(str, n) {
+const seg = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+let out = "";
+let count = 0;
+for (const { segment } of seg.segment(str)) {
+if (count >= n) break;
+out += segment;
+count++;
+}
+return out;
 }
 
 // 返回 source/_posts 目录下所有 .md 文件的绝对路径数组
@@ -62,15 +88,22 @@ return fs.readdirSync(dir)
 }
 
 // 把 tags 数组渲染成 HTML: <span class="tag-pill">xxx</span> 拼接
+// tag 来自 front-matter，属于不可信文本，先转义再拼 HTML
 function renderTagsHtml(tags) {
 const list = Array.isArray(tags) ? tags : [];
-return list.map((t) => `<span class="tag-pill">${t}</span>`).join("");
+return list.map((t) => `<span class="tag-pill">${md.utils.escapeHtml(t)}</span>`).join("");
 }
 
 // 按 date 字段对文章数组做倒序排序 (最新在前)，返回新数组，不修改传入的原数组
+// 无 date 字段的文章排到末尾（"不知道什么时候写的"当作最旧），避免空串排到最前
 function sortPostsByDateDesc(posts) {
 return posts.slice().sort((a, b) => {
-const dateCmp = (b.date || "").localeCompare(a.date || "");
+const da = a.date || "";
+const db = b.date || "";
+if (!da && !db) return (b.title || "").localeCompare(a.title || "");
+if (!da) return 1;
+if (!db) return -1;
+const dateCmp = db.localeCompare(da);
 if (dateCmp !== 0) return dateCmp;
 return (b.title || "").localeCompare(a.title || "");
 });
@@ -86,13 +119,16 @@ if (list.length === 0) {
 return '<p class="post-excerpt">还没有发布任何文章。</p>';
 }
 return list.map((post) => {
+// title / excerpt 来自文章 front-matter 与正文，属于不可信文本，先转义再拼 HTML
+const escTitle = md.utils.escapeHtml(post.title);
+const escExcerpt = md.utils.escapeHtml(post.excerpt);
 return `<article class="recent-post-item">
-<h2><a href="${config.baseUrl}/${post.url}">${post.title}</a></h2>
+<h2><a href="${config.baseUrl}/${post.url}">${escTitle}</a></h2>
 <div class="post-meta">
 <span class="post-date">${post.formattedDate}</span>
 <span class="post-tags">${renderTagsHtml(post.tags)}</span>
 </div>
-<p class="post-excerpt">${post.excerpt}...</p>
+<p class="post-excerpt">${escExcerpt}...</p>
 </article>`
 }).join("\n");
 }

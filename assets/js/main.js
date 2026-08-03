@@ -48,7 +48,13 @@ var li = document.createElement("li");
 var a = document.createElement("a");
 a.href = BASE_URL + "/" + post.url;
 var dateText = post.formattedDate || post.date || "";
-a.innerHTML = post.title + '<span class="post-item-date">' + dateText + "</span>";
+// 标题来自 front-matter，属于不可信文本：用 textContent 而非 innerHTML 赋值，
+// 这样标题里即使含 <script> 之类的 HTML 也只会原样显示为文本，不会执行
+a.textContent = post.title;
+var dateSpan = document.createElement("span");
+dateSpan.className = "post-item-date";
+dateSpan.textContent = dateText;
+a.appendChild(dateSpan);
 li.appendChild(a);
 return li;
 }
