@@ -5,6 +5,7 @@ const { renderOne } = require("./render");
 const { newPost } = require("./new-post");
 const { serve } = require("./serve");
 const { deploy } = require("./deploy");
+const { syncGists } = require("./gist-sync");
 
 program
 .name("swp-cli")
@@ -46,6 +47,14 @@ program
 .option("-m, --message <message>", "自定义 commit message")
 .action((options) => {
 deploy(options.message);
+});
+
+program
+.command("gist-sync")
+.description("把 GitHub 用户的 public gist 同步为文章并合并到站点（删除已不存在的 gist 文章）")
+.option("-u, --user <user>", "GitHub 用户名（默认读 blog.config.json 的 githubUser）")
+.action((options) => {
+syncGists(options.user);
 });
 
 program.parse(process.argv);

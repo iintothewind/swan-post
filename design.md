@@ -83,7 +83,8 @@ swan-post/
 │   ├── render.js                 # 单篇增量渲染
 │   ├── new-post.js               # 新建文章
 │   ├── serve.js                  # 本地静态预览服务器
-│   └── deploy.js                 # 构建 + git 提交 + push,触发 GitHub Pages 更新
+│   ├── deploy.js                 # 构建 + git 提交 + push,触发 GitHub Pages 更新
+│   └── gist-sync.js              # 同步 GitHub public gist 为文章
 ├── docs/                         # 【输出目录】构建产物,由 deploy 推送到独立 Pages 仓库,不要手动编辑
 │   ├── index.html                # 首页(最近 N 篇文章,服务端渲染)
 │   ├── posts.json                # 文章索引(前端 sidebar 运行时 fetch)
@@ -139,6 +140,7 @@ docs/
   "baseUrl": "",
   "recentPostsCount": 10,
   "sidebarPostCount": 200,
+  "githubUser": "username",
   "deployTarget": "git@github.com:username/username.github.io.git"
 }
 ```
@@ -146,6 +148,7 @@ docs/
 - `baseUrl`:如果博客部署在 `https://username.github.io/`(根域名),`baseUrl` 留空字符串 `""`。如果部署在 `https://username.github.io/reponame/`(项目页面),`baseUrl` 设为 `"/reponame"`。
 - `recentPostsCount`:首页正文区域展示的"最近文章"数量,默认为 `10`。改这个数字不需要改代码,构建脚本读取配置时如果该字段缺失,兜底使用 `10`。
 - `sidebarPostCount`:sidebar「时间线」tab 最多展示的文章数量,默认为 `200`。只影响前端展示条数,不影响 `posts.json` 内容。
+- `githubUser`:GitHub 用户名,`gist-sync` 命令用它拉取 public gist(也可用命令行 `--user` 覆盖)。
 - `deployTarget`:GitHub Pages 仓库的 SSH URL。部署命令会将构建产物推送到此仓库。源码仓库（`swan-post`）和 Pages 仓库分离。
 - 所有模板里引用静态资源时,必须拼接 `{{BASE_URL}}` 前缀(见第 5 节),这样无论根域名还是子路径都能正确工作,**不要写死绝对路径或相对路径 `../`**。
 
@@ -1338,6 +1341,168 @@ program.parse(process.argv);
 
 ---
 
+### 7.8 `scripts/gist-sync.js`(同步 GitHub public gist 为文章)
+
+**把 GitHub 用户的 public gist 同步为博客文章并合并到现有 posts。** 不新增第三方依赖(Node 18+ 内置 `fetch`)。
+
+- 过滤规则:只同步含 `.md` 文件的 gist,多文件时取第一个 `.md` 文件;无 Markdown 文件的 gist(代码片段等)跳过。
+- 生成的文章 front-matter:`title` 取 gist `description`(去掉 `_by_agent_zero` 署名后缀,为空则用文件名)、`date` 取 `created_at`(UTC 字形 `YYYY-MM-DD HH:mm:ss`,与 js-yaml 对无时区日期的解析口径一致)、`tags/categories` 空、`gist_id` 记录来源 id(删除同步依赖此字段)。
+- 文件名:`<日期>-<gist_id>.md`(如 `2026-08-02-3474dbaa807b54028c3411f18827c7da.md`),gist id 唯一、稳定、符合 `[a-z0-9-]` 规则。
+- 删除同步:本地带 `gist_id` 标记、但远程已不存在的文章会被删除。
+- 完成后自动执行 `build()` 刷新整个站点。
+- 用户名:`--user` 参数优先,否则读 `blog.config.json` 的 `githubUser`;可选 `GITHUB_TOKEN` 环境变量提高 API 限额(匿名 60 次/小时)。
+- gist 正文通过 `raw_url` 拉取(gist.githubusercontent.com),不计入 GitHub API 配额。
+
+```javascript
+// scripts/gist-sync.js
+// 同步 GitHub 用户的 public gist 为博客文章：
+// 拉取 gist → 选第一个 Markdown 文件 → 生成 front-matter → 写入 source/_posts/<日期>-<gist_id>.md
+// → 删除远程已不存在的 gist 文章（gist_id 标记）→ 全量 build 刷新站点。
+// 不新增依赖：Node 18+ 内置 fetch。gist 正文走 raw_url（gist.githubusercontent.com，不计 API 配额）。
+const fs = require("fs-extra");
+const path = require("path");
+const matter = require("gray-matter");
+const { build } = require("./build");
+const { loadConfig } = require("./utils");
+
+// front-matter 里标记该文章来源 gist 的字段（删除同步依赖它）
+const GIST_ID_FIELD = "gist_id";
+// 标题里的 agent 署名后缀（用户 gist 的 description 形如 "..._by_agent_zero"）
+const AGENT_SUFFIX_RE = /_by_agent_zero\s*$/;
+
+// 拉取一个 GitHub 用户的全部 public gist（分页），返回原始数组
+async function fetchPublicGists(user, token) {
+  const headers = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "swan-post-gist-sync"
+  };
+  if (token) headers.Authorization = "token " + token;
+  const all = [];
+  for (let page = 1; ; page++) {
+    const url = "https://api.github.com/users/" + encodeURIComponent(user) + "/gists?per_page=100&page=" + page;
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      throw new Error("GitHub API 请求失败: HTTP " + res.status + " " + (await res.text()).slice(0, 200));
+    }
+    const batch = await res.json();
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    all.push(...batch);
+    if (batch.length < 100) break;
+  }
+  return all;
+}
+
+// 从 gist 的多个文件里选一个 Markdown 文件（取第一个 .md 后缀的）
+function pickMarkdownFile(gist) {
+  const files = Object.values(gist.files || {});
+  return files.find((f) => f.filename && f.filename.toLowerCase().endsWith(".md")) || null;
+}
+
+// 取文章标题：description 去掉 agent 署名后缀，为空则用文件名
+function gistTitle(gist, filename) {
+  const desc = (gist.description || "").replace(AGENT_SUFFIX_RE, "").trim();
+  if (desc) return desc;
+  return filename.replace(/\.md$/i, "");
+}
+
+// created_at(UTC ISO 串) → "YYYY-MM-DD HH:mm:ss"（UTC 字形，与 js-yaml 对无时区日期的解析口径一致）
+function toLocalDateStr(iso) {
+  return (iso || "").slice(0, 19).replace("T", " ");
+}
+
+// 生成带 front-matter 的文章内容；title 用 JSON 风格双引号字符串，任何特殊字符都安全
+function buildPostContent(gist, filename, content) {
+  return "---\n"
+    + "title: " + JSON.stringify(gistTitle(gist, filename)) + "\n"
+    + "date: " + toLocalDateStr(gist.created_at) + "\n"
+    + "tags: []\n"
+    + "categories: []\n"
+    + GIST_ID_FIELD + ": " + gist.id + "\n"
+    + "---\n\n"
+    + content.replace(/^\s+/, "");
+}
+
+// 同步核心。baseDir 可注入（默认 CLI 用 cwd，测试传临时目录）。
+// 返回统计 { total, added, updated, removed, skipped }
+async function syncGistsCore({ user, token, baseDir, onProgress }) {
+  const postsDir = path.join(baseDir, "source", "_posts");
+  fs.ensureDirSync(postsDir);
+
+  const gists = await fetchPublicGists(user, token);
+  const remoteIds = new Set();
+  let added = 0, updated = 0, skipped = 0;
+
+  for (const gist of gists) {
+    const file = pickMarkdownFile(gist);
+    if (!file) { skipped++; continue; }
+    remoteIds.add(gist.id);
+
+    const res = await fetch(file.raw_url);
+    if (!res.ok) {
+      throw new Error("拉取 gist 内容失败: HTTP " + res.status + " " + file.raw_url);
+    }
+    const content = await res.text();
+
+    const datePrefix = toLocalDateStr(gist.created_at).slice(0, 10);
+    const target = path.join(postsDir, datePrefix + "-" + gist.id + ".md");
+    const existed = fs.existsSync(target);
+    fs.writeFileSync(target, buildPostContent(gist, file.filename, content), "utf-8");
+    if (existed) { updated++; } else { added++; }
+    if (onProgress) onProgress((existed ? "更新" : "新增") + ": " + file.filename);
+  }
+
+  // 删除：本地带 gist_id 标记、但远程已不存在的文章（gist 被删/改名后 id 不变，只可能整个消失）
+  let removed = 0;
+  fs.readdirSync(postsDir).filter((f) => f.endsWith(".md")).forEach((f) => {
+    const p = path.join(postsDir, f);
+    let data = null;
+    try { data = matter(fs.readFileSync(p, "utf-8")).data; } catch { return; }
+    if (data && data[GIST_ID_FIELD] && !remoteIds.has(String(data[GIST_ID_FIELD]))) {
+      fs.removeSync(p);
+      removed++;
+      if (onProgress) onProgress("删除（gist 已不存在）: " + f);
+    }
+  });
+
+  return { total: gists.length, added, updated, removed, skipped };
+}
+
+// CLI 入口：--user 优先，否则读 blog.config.json 的 githubUser；
+// 可用环境变量 GITHUB_TOKEN 提高 API 限额（匿名 60 次/小时）
+async function syncGists(userOption) {
+  const config = loadConfig();
+  const user = userOption || config.githubUser;
+  if (!user) {
+    console.error("请指定 GitHub 用户名：命令行 --user <name>，或在 blog.config.json 中配置 githubUser");
+    process.exit(1);
+  }
+  const token = process.env.GITHUB_TOKEN || "";
+  try {
+    const stats = await syncGistsCore({
+      user,
+      token,
+      baseDir: process.cwd(),
+      onProgress: (line) => console.log("  " + line)
+    });
+    console.log("同步完成：共拉取 " + stats.total + " 个 gist，"
+      + "新增 " + stats.added + " 篇，更新 " + stats.updated + " 篇，删除 " + stats.removed + " 篇，"
+      + "跳过 " + stats.skipped + " 个（无 Markdown 文件）");
+    console.log("== 重新构建站点 ==");
+    build();
+  } catch (err) {
+    console.error("gist 同步失败:", err.message);
+    process.exit(1);
+  }
+}
+
+module.exports = {
+  syncGists, syncGistsCore,
+  fetchPublicGists, pickMarkdownFile, gistTitle, toLocalDateStr, buildPostContent
+};
+```
+
+---
+
 ## 8. 示例文章(创建仓库时一并放入)
 
 `source/_posts/2026-07-04-hello-world.md`:
@@ -1378,6 +1543,12 @@ swp-cli build
 # 本地预览
 swp-cli serve
 # 打开浏览器访问 http://localhost:8080
+
+# 把 GitHub 用户的 public gist 同步为文章并合并到站点
+# (blog.config.json 里配好 githubUser;可选设 GITHUB_TOKEN 环境变量提高 API 限额)
+swp-cli gist-sync
+# 或临时指定用户名:
+swp-cli gist-sync --user iintothewind
 
 # 一条命令部署:重新构建站点,并推送到独立的 GitHub Pages 仓库(地址在 blog.config.json 的 deployTarget)
 swp-cli deploy
@@ -1425,6 +1596,7 @@ swp-cli deploy -m "写了一篇新文章"
     - 改动一篇文章或新建一篇文章后,运行 `node scripts/cli.js deploy -m "test deploy"`,确认依次打印出构建、git clone/pull、git add、git commit、git push 的日志,且 `.deploy/` 目录里的 git log 出现了一条 message 为 "test deploy" 的提交。
     - 故意把 `deployTarget` 配成一个不存在的仓库地址运行一次,确认命令捕获错误并打印出可读的中文提示,而不是抛出未处理的异常导致进程崩溃且无提示。
 22. 全部验证通过后,在 Pages 仓库(`<user>.github.io`)的 Settings 里开启 GitHub Pages(Source: `main` 分支根目录,只需设置一次,后续每次 `deploy` 都会自动更新)。
+23. 测试 gist-sync:在 `blog.config.json` 配置 `githubUser` 后运行 `node scripts/cli.js gist-sync`,确认 `source/_posts/` 下生成了带 `gist_id` front-matter 的文章且 `docs/` 被重新构建;再次运行确认输出"更新 N 篇"而非重复新增;在 GitHub 上删除某个 gist 后再运行,确认本地对应文章被删除。
 
 ---
 
@@ -1442,6 +1614,7 @@ swp-cli deploy -m "写了一篇新文章"
 - [ ] 文章页正确显示标题、日期、tag、Markdown 渲染后的正文(代码块、图片、列表等常见 Markdown 语法均正常渲染)。
 - [ ] 所有页面内的静态资源路径(css/js/posts.json)在 `baseUrl` 为空和非空两种配置下都能正确加载(至少验证 `baseUrl: ""` 这一种,`baseUrl` 非空的情况人工检查代码逻辑是否自洽即可)。
 - [ ] `docs/` 目录是构建产物,已加入 `.gitignore`,不提交到源码仓库。通过 `deploy` 命令推送到独立的 GitHub Pages 仓库。
+- [ ] `swp-cli gist-sync`(或 `node scripts/cli.js gist-sync`)能拉取 `githubUser` 的 public gist 中所有含 Markdown 文件的 gist,生成带 `gist_id` front-matter 的文章到 `source/_posts/` 并重新构建;gist 被删除后本地对应文章会被清理。
 
 ---
 

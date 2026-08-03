@@ -5,5 +5,6 @@
   "baseUrl": "",
   "recentPostsCount": 10,
   "sidebarPostCount": 200,
+  "githubUser": "iintothewind",
   "deployTarget": "git@github.com:iintothewind/iintothewind.github.io.git"
 }
