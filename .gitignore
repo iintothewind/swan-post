@@ -23,3 +23,6 @@ docs/
 
 # 部署用的临时 clone
 .deploy/
+
+# bun 锁文件
+bun.lock
