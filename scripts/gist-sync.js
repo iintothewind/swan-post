@@ -30,7 +30,9 @@ async function fetchPublicGists(user, token) {
     }
     const batch = await res.json();
     if (!Array.isArray(batch) || batch.length === 0) break;
-    all.push(...batch);
+    // 注意：认证用户 == 被查询用户时，GitHub 会连 secret gists 一起返回。
+    // 显式过滤，只保留 public gists（secret 不应当博客内容）。
+    all.push(...batch.filter((g) => g.public === true));
     if (batch.length < 100) break;
   }
   return all;
