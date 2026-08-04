@@ -54,12 +54,14 @@ function toLocalDateStr(iso) {
   return (iso || "").slice(0, 19).replace("T", " ");
 }
 
-// 生成带 front-matter 的文章内容；title 用 JSON 风格双引号字符串，任何特殊字符都安全
+// 生成带 front-matter 的文章内容；title 用 JSON 风格双引号字符串，任何特殊字符都安全。
+// tags 固定为 ["gist", "summary"]：gist 同步的评论/总结类内容，统一英文 tags。
+// 自动提取关键词不可行（中文需分词，且项目依赖被 design.md 限定为 4 个包、不新增），故固定。
 function buildPostContent(gist, filename, content) {
   return "---\n"
     + "title: " + JSON.stringify(gistTitle(gist, filename)) + "\n"
     + "date: " + toLocalDateStr(gist.created_at) + "\n"
-    + "tags: []\n"
+    + "tags: [\"gist\", \"summary\"]\n"
     + "categories: []\n"
     + GIST_ID_FIELD + ": " + gist.id + "\n"
     + "---\n\n"

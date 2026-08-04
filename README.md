@@ -95,7 +95,7 @@ swp-cli gist-sync --user iintothewind
 
 行为说明：
 - 只同步**含 Markdown 文件**的 public gist（多文件时取第一个 `.md`），代码片段类 gist 自动跳过。
-- 文章写到 `source/_posts/<日期>-<gist_id>.md`，front-matter 自动生成：`title` 取 gist 描述（去掉 `_by_agent_zero` 署名后缀）、`date` 取 gist 创建时间、`gist_id` 记录来源。
+- 文章写到 `source/_posts/<日期>-<gist_id>.md`，front-matter 自动生成：`title` 取 gist 描述（去掉 `_by_agent_zero` 署名后缀）、`date` 取 gist 创建时间、`tags` 固定为 `["gist", "summary"]`、`gist_id` 记录来源。
 - gist 在 GitHub 上被删除后，再次同步会删除本地对应文章。
 - 同步完成后自动全量构建站点。
 - 可选：设置 `GITHUB_TOKEN` 环境变量可提高 GitHub API 限额（匿名 60 次/小时）。

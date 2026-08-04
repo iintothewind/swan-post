@@ -1346,7 +1346,7 @@ program.parse(process.argv);
 **把 GitHub 用户的 public gist 同步为博客文章并合并到现有 posts。** 不新增第三方依赖(Node 18+ 内置 `fetch`)。
 
 - 过滤规则:只同步含 `.md` 文件的 gist,多文件时取第一个 `.md` 文件;无 Markdown 文件的 gist(代码片段等)跳过。
-- 生成的文章 front-matter:`title` 取 gist `description`(去掉 `_by_agent_zero` 署名后缀,为空则用文件名)、`date` 取 `created_at`(UTC 字形 `YYYY-MM-DD HH:mm:ss`,与 js-yaml 对无时区日期的解析口径一致)、`tags/categories` 空、`gist_id` 记录来源 id(删除同步依赖此字段)。
+- 生成的文章 front-matter:`title` 取 gist `description`(去掉 `_by_agent_zero` 署名后缀,为空则用文件名)、`date` 取 `created_at`(UTC 字形 `YYYY-MM-DD HH:mm:ss`,与 js-yaml 对无时区日期的解析口径一致)、`tags` 固定为 `["gist", "summary"]`(自动提取关键词不可行:中文需分词,且依赖被限定为 4 个包)、`categories` 空、`gist_id` 记录来源 id(删除同步依赖此字段)。
 - 文件名:`<日期>-<gist_id>.md`(如 `2026-08-02-3474dbaa807b54028c3411f18827c7da.md`),gist id 唯一、稳定、符合 `[a-z0-9-]` 规则。
 - 删除同步:本地带 `gist_id` 标记、但远程已不存在的文章会被删除。
 - 完成后自动执行 `build()` 刷新整个站点。
@@ -1410,12 +1410,14 @@ function toLocalDateStr(iso) {
   return (iso || "").slice(0, 19).replace("T", " ");
 }
 
-// 生成带 front-matter 的文章内容；title 用 JSON 风格双引号字符串，任何特殊字符都安全
+// 生成带 front-matter 的文章内容；title 用 JSON 风格双引号字符串，任何特殊字符都安全。
+// tags 固定为 ["gist", "summary"]：gist 同步的评论/总结类内容，统一英文 tags。
+// 自动提取关键词不可行（中文需分词，且项目依赖被 design.md 限定为 4 个包、不新增），故固定。
 function buildPostContent(gist, filename, content) {
   return "---\n"
     + "title: " + JSON.stringify(gistTitle(gist, filename)) + "\n"
     + "date: " + toLocalDateStr(gist.created_at) + "\n"
-    + "tags: []\n"
+    + "tags: [\"gist\", \"summary\"]\n"
     + "categories: []\n"
     + GIST_ID_FIELD + ": " + gist.id + "\n"
     + "---\n\n"
