@@ -10,12 +10,12 @@ function renderOne(mdFilePath) {
 const config = loadConfig();
 const docsDir = path.join(process.cwd(), "docs");
 
-// 1. 如果 docs 目录还不存在基础结构，先做最基础的初始化 (css/js/prism/posts 目录)
+// 1. If the docs directory doesn't have the basic structure yet, do minimal init (css/js/prism/posts dirs)
 fs.ensureDirSync(path.join(docsDir, "posts"));
 fs.ensureDirSync(path.join(docsDir, "css"));
 fs.ensureDirSync(path.join(docsDir, "js"));
 fs.ensureDirSync(path.join(docsDir, "prism"));
-// 只在文件不存在时才拷贝，避免覆盖用户可能已手动更新的资源
+// Only copy when the file doesn't exist, to avoid overwriting resources the user may have manually updated
 if (!fs.existsSync(path.join(docsDir, "css", "style.css"))) {
 fs.copySync(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
 }
@@ -26,11 +26,11 @@ if (!fs.existsSync(path.join(docsDir, "prism", "prism.min.js"))) {
 fs.copySync(path.join(process.cwd(), "assets", "prism"), path.join(docsDir, "prism"));
 }
 
-// 2. 解析这一篇 markdown
+// 2. Parse this markdown file
 const absPath = path.isAbsolute(mdFilePath) ? mdFilePath : path.join(process.cwd(), mdFilePath);
 const post = parseMarkdownFile(absPath);
 
-// 3. 渲染该文章的 html 并写入 docs/posts/<slug>.html
+// 3. Render the post HTML and write to docs/posts/<slug>.html
 const postTpl = fs.readFileSync(path.join(process.cwd(), "templates", "post.html"), "utf-8");
 const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
 
@@ -51,7 +51,7 @@ const fullHtml = renderTemplate(layoutTpl, {
 const outputPath = path.join(docsDir, "posts", post.slug + ".html");
 fs.writeFileSync(outputPath, fullHtml, "utf-8");
 
-// 4. 更新 docs/posts.json：如果该 slug 已存在则替换，否则新增，然后按 date 重新排序保存
+// 4. Update docs/posts.json: replace if the slug already exists, otherwise append, then re-sort by date and save
 const index = loadPostsIndex();
 const entry = {
 title: post.title,
@@ -71,13 +71,14 @@ index.push(entry);
 }
 const sortedIndex = savePostsIndex(index);
 
-// 5. 重新生成首页 —— 这一步不能省略。因为这篇文章有可能刚好进入"最近 N 篇"的名单，
-// 如果不重新生成首页，新文章能在 sidebar 里点开，但首页正文区域看不到它。
+// 5. Regenerate the homepage — this step cannot be skipped. The post may just happen to enter the
+// "recent N posts" list; without regenerating the homepage, the new post would be reachable from
+// the sidebar but invisible in the homepage body area.
 renderHomepage(config, sortedIndex);
 
-console.log(`已渲染：${outputPath}`);
-console.log(`已更新索引：docs/posts.json`);
-console.log(`已刷新首页：docs/index.html`);
+console.log(`Rendered: ${outputPath}`);
+console.log(`Index updated: docs/posts.json`);
+console.log(`Homepage refreshed: docs/index.html`);
 }
 
 module.exports = { renderOne };

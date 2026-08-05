@@ -11,7 +11,7 @@ overlayMask.addEventListener("click", function () {
 body.classList.remove("sidebar-open");
 });
 
-// Tab 切换
+// Tab switching
 var tabBtns = document.querySelectorAll(".tab-btn");
 tabBtns.forEach(function (btn) {
 btn.addEventListener("click", function () {
@@ -31,7 +31,7 @@ renderTimeline(posts);
 renderTagCloud(posts);
 })
 .catch(function (err) {
-console.error("加载 posts.json 失败:", err);
+console.error("Failed to load posts.json:", err);
 });
 
 function renderTimeline(posts) {
@@ -48,8 +48,9 @@ var li = document.createElement("li");
 var a = document.createElement("a");
 a.href = BASE_URL + "/" + post.url;
 var dateText = post.formattedDate || post.date || "";
-// 标题来自 front-matter，属于不可信文本：用 textContent 而非 innerHTML 赋值，
-// 这样标题里即使含 <script> 之类的 HTML 也只会原样显示为文本，不会执行
+// Title comes from front-matter and is untrusted text: use textContent instead of innerHTML
+// so that even if the title contains HTML like <script>, it will only be displayed as text
+// and not executed.
 a.textContent = post.title;
 var dateSpan = document.createElement("span");
 dateSpan.className = "post-item-date";

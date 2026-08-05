@@ -3,7 +3,7 @@ const path = require("path");
 
 function newPost(slug, titleOption) {
 if (!slug || !/^[a-z0-9\-]+$/.test(slug)) {
-console.error("slug 必须是小写字母、数字、短横线组成，例如：my-first-post");
+console.error("slug must consist of lowercase letters, digits, and hyphens, e.g.: my-first-post");
 process.exit(1);
 }
 const dir = path.join(process.cwd(), "source", "_posts");
@@ -15,7 +15,7 @@ const filename = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + p
 const filePath = path.join(dir, filename);
 
 if (fs.existsSync(filePath)) {
-console.error("文件已存在：" + filePath);
+console.error("File already exists: " + filePath);
 process.exit(1);
 }
 
@@ -27,10 +27,10 @@ tags: []
 categories: []
 ---
 
-正文写在这里。
+Write your content here.
 `;
 fs.writeFileSync(filePath, content, "utf-8");
-console.log("已创建：" + filePath);
+console.log("Created: " + filePath);
 }
 
 module.exports = { newPost };

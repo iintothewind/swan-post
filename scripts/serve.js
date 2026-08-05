@@ -42,7 +42,7 @@ res.end(data);
 });
 });
 server.listen(port, () => {
-console.log(`本地预览：http://localhost:${port}`);
+console.log(`Local preview: http://localhost:${port}`);
 });
 }
 

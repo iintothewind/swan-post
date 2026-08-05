@@ -1,63 +1,63 @@
-# swan-post (swp) —— 个人静态博客生成器
+# swan-post (swp) — Personal Static Blog Generator
 
-> 用 Node.js 写的一个替代 Hexo 的个人静态博客生成工具，输出结果部署到 GitHub Pages。
+> A personal static blog generator written in Node.js as an alternative to Hexo, with output deployed to GitHub Pages.
 
-## 功能范围
+## Features
 
-1. 固定布局：左侧 sidebar(文章列表 + 导航)，默认隐藏，点击按钮弹出；右侧显示正文。
-2. 文章使用 Hexo 风格的 Markdown(YAML front-matter + 正文)。
-3. 命令行工具：可以把单篇 `.md` 直接渲染成 `.html` 并"上线"，不需要全量重新构建整个站点。
+1. Fixed layout: left sidebar (article list + navigation), hidden by default, toggled by a button; main content displayed on the right.
+2. Articles use Hexo-style Markdown (YAML front-matter + body).
+3. CLI tool: render a single `.md` file directly to `.html` and publish it without rebuilding the entire site.
 
-## 明确不做的事
+## Non-Goals
 
-- 不做分页
-- 不做评论系统、不做 RSS、不做搜索
-- 不做 live-reload(热更新)
-- 不做中文转拼音生成 slug
+- No pagination
+- No comment system, no RSS, no search
+- No live-reload (hot reload)
+- No Chinese-to-pinyin slug generation
 
-## 安装
+## Installation
 
 ```bash
 npm install
 ```
 
-> 所有命令统一通过 `npx` 运行，无需全局安装。
+> All commands run via `npx` — no global installation required.
 
-## 使用
+## Usage
 
-### 创建新文章
+### Create a New Article
 
 ```bash
-npx swp-cli new my-first-post --title "我的第一篇文章"
+npx swp-cli new my-first-post --title "My First Article"
 ```
 
-### 渲染单篇文章并加入站点
+### Render a Single Article and Add to Site
 
 ```bash
 npx swp-cli render source/_posts/2026-07-04-my-first-post.md
 ```
 
-### 全量重新构建整个站点
+### Full Site Rebuild
 
 ```bash
 npx swp-cli build
 ```
 
-### 本地预览
+### Local Preview
 
 ```bash
 npx swp-cli serve
 ```
 
-打开浏览器访问 http://localhost:8080
+Open your browser and visit http://localhost:8080
 
-### 部署到 GitHub Pages
+### Deploy to GitHub Pages
 
-本工具采用**双仓库模式**：
-- **源码仓库** (`swan-post`)：存放工具代码和 Markdown 文章
-- **Pages 仓库** (`<user>.github.io`)：存放构建产物（静态 HTML/CSS/JS）
+This tool uses a **dual-repo model**:
+- **Source repo** (`swan-post`): stores the tool code and Markdown articles
+- **Pages repo** (`<user>.github.io`): stores the build output (static HTML/CSS/JS)
 
-先在 `blog.config.json` 中配置 Pages 仓库地址：
+First, configure the Pages repo URL in `blog.config.json`:
 
 ```json
 {
@@ -65,79 +65,79 @@ npx swp-cli serve
 }
 ```
 
-然后一条命令部署：
+Then deploy with a single command:
 
 ```bash
 npx swp-cli deploy
 ```
 
-也可以自定义 commit message：
+You can also customize the commit message:
 
 ```bash
-npx swp-cli deploy -m "写了一篇新文章"
+npx swp-cli deploy -m "Wrote a new article"
 ```
 
-命令执行流程：
-1. 构建站点到 `docs/`
-2. 浅克隆 Pages 仓库到本地 `.deploy/`
-3. 用 `docs/` 内容替换 `.deploy/`
-4. force push 到 Pages 仓库
+Command execution flow:
+1. Build the site to `docs/`
+2. Shallow-clone the Pages repo to local `.deploy/`
+3. Replace `.deploy/` contents with `docs/`
+4. Force push to the Pages repo
 
-> 首次部署前需确保 Pages 仓库已在 GitHub 创建，且你有推送权限。
+> Before the first deployment, make sure the Pages repo has been created on GitHub and you have push access.
 
-### 同步 Gist 为文章
+### Sync Gists as Articles
 
-把 GitHub 账号的 public gist 同步成博客文章，合并到现有文章里：
+Sync public gists from your GitHub account as blog articles, merging into existing articles:
 
 ```bash
 npx swp-cli gist-sync
-# 或临时指定用户名（默认读 blog.config.json 的 githubUser）：
+# Or specify a username temporarily (defaults to githubUser in blog.config.json):
 npx swp-cli gist-sync --user iintothewind
 ```
 
-行为说明：
-- 只同步**含 Markdown 文件**的 public gist（多文件时取第一个 `.md`），代码片段类 gist 自动跳过。
-- 文章写到 `source/_posts/<日期>-<gist_id>.md`，front-matter 自动生成：`title` 取 gist 描述（去掉 `_by_agent_zero` 署名后缀）、`date` 取 gist 创建时间、`tags` 固定为 `["gist", "summary"]`、`gist_id` 记录来源。
-- gist 在 GitHub 上被删除后，再次同步会删除本地对应文章。
-- 同步完成后自动全量构建站点。
-- 可选：设置 `GITHUB_TOKEN` 环境变量可提高 GitHub API 限额（匿名 60 次/小时）。
+Behavior notes:
+- Only syncs public gists that **contain Markdown files** (takes the first `.md` in multi-file gists); code-snippet gists are automatically skipped.
+- Articles are written to `source/_posts/<date>-<gist_id>.md`, with auto-generated front-matter: `title` from the gist description (stripping the `_by_agent_zero` suffix), `date` from the gist creation time, `tags` fixed to `["gist", "summary"]`, and `gist_id` recording the source.
+- If a gist is deleted on GitHub, re-syncing will remove the corresponding local article.
+- Automatically performs a full site rebuild after syncing.
+- Optional: set the `GITHUB_TOKEN` environment variable to increase the GitHub API rate limit (anonymous: 60 requests/hour).
 
-## 文章格式
+## Article Format
 
-每篇文章放在 `source/_posts/` 目录下，文件格式：
+Each article lives in the `source/_posts/` directory, with the following format:
 
 ```markdown
 ---
-title: 文章标题
+title: Article Title
 date: 2026-07-04 10:00:00
-tags: [标签 1, 标签 2]
-categories: [分类 1]
+tags: [tag1, tag2]
+categories: [category1]
 ---
 
-正文内容，标准 Markdown 语法。
+Body content in standard Markdown syntax.
 ```
 
-文件名格式：`<slug>.md`，slug 由用户在命令行指定 (纯小写字母、数字、短横线)。
+Filename format: `<slug>.md`, where the slug is specified by the user on the command line (lowercase letters, digits, and hyphens only).
 
-## 配置
+## Configuration
 
-站点配置文件 `blog.config.json`：
+Site configuration file `blog.config.json`:
 
 ```json
 {
-  "title": "我的博客",
+  "title": "My Blog",
   "author": "Ivar",
-  "description": "个人博客",
+  "description": "Personal blog",
   "baseUrl": "",
   "recentPostsCount": 10
 }
 ```
 
-- `baseUrl`: 本地预览时无需设置。部署到 GitHub Pages 时，如果是项目页面（如 `https://username.github.io/reponame/`），设为 `"/reponame"`。
-- `recentPostsCount`: 首页正文区域展示的"最近文章"数量，默认为 `10`。
-- `deployTarget`: GitHub Pages 仓库 SSH 地址，如 `"git@github.com:username/username.github.io.git"`。部署命令会将构建产物推送到此仓库。
+- `baseUrl`: Not needed for local preview. When deploying to GitHub Pages, if it's a project page (e.g. `https://username.github.io/reponame/`), set it to `"/reponame"`.
+- `recentPostsCount`: Number of "recent posts" displayed in the main content area on the homepage. Defaults to `10`.
+- `deployTarget`: SSH URL of the GitHub Pages repo, e.g. `"git@github.com:username/username.github.io.git"`. The deploy command pushes build output to this repo.
 
-## 目录结构
+## Directory Structure
 
 ```
 swan-post/
@@ -150,7 +150,7 @@ swan-post/
 │   ├── css/
 │   └── js/
 ├── scripts/
-├── .deploy/ # Pages 仓库临时 clone（自动生成，已 gitignore）
-├── docs/ # 构建产物（已 gitignore，通过 deploy 推送到 Pages 仓库）
+├── .deploy/ # Pages repo temporary clone (auto-generated, gitignored)
+├── docs/    # Build output (gitignored, pushed to Pages repo via deploy)
 └── README.md
 ```

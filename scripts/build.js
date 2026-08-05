@@ -5,10 +5,11 @@ loadConfig, parseMarkdownFile, renderTemplate,
 listPostFiles, renderTagsHtml, renderRecentPostsHtml, savePostsIndex
 } = require("./utils");
 
-// 生成首页 docs/index.html。
-// postsIndexSorted 必须是已经按 date 倒序排好的 posts.json 条目数组
-// (savePostsIndex 的返回值就是排好序的，直接传进来用即可，不要重复排序)。
-// render.js 增量渲染时也会调用这个函数，保证新文章一旦进入最近 N 篇就能立刻反映到首页。
+// Generate the homepage docs/index.html.
+// postsIndexSorted must be the posts.json entries array already sorted by date descending
+// (savePostsIndex returns a sorted array — pass it directly, don't re-sort).
+// render.js also calls this function during incremental rendering, so new posts
+// appear on the homepage as soon as they enter the recent N list.
 function renderHomepage(config, postsIndexSorted) {
 const docsDir = path.join(process.cwd(), "docs");
 const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
@@ -23,7 +24,7 @@ SITE_DESCRIPTION: config.description,
 RECENT_POSTS_HTML: recentPostsHtml
 });
 const homeHtml = renderTemplate(layoutTpl, {
-  PAGE_TITLE: "首页",
+  PAGE_TITLE: "Home",
   SITE_TITLE: config.title,
   BASE_URL: config.baseUrl,
   SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
@@ -36,27 +37,27 @@ function build() {
 const config = loadConfig();
 const docsDir = path.join(process.cwd(), "docs");
 
-// 1. 清空并重建 docs 目录结构
+// 1. Clear and rebuild the docs directory structure
 fs.emptyDirSync(docsDir);
 fs.ensureDirSync(path.join(docsDir, "posts"));
 fs.ensureDirSync(path.join(docsDir, "css"));
 fs.ensureDirSync(path.join(docsDir, "js"));
 fs.ensureDirSync(path.join(docsDir, "prism"));
 
-  // 2. 拷贝静态资源
+  // 2. Copy static assets
   fs.copySync(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
   fs.copySync(path.join(process.cwd(), "assets", "js"), path.join(docsDir, "js"));
   fs.copySync(path.join(process.cwd(), "assets", "prism"), path.join(docsDir, "prism"));
 
-// 3. 读取文章模板 (布局模板和首页模板留到生成首页那一步再读，由 renderHomepage 内部处理)
+// 3. Read post templates (layout and homepage templates are read later during homepage generation, handled internally by renderHomepage)
 const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
 const postTpl = fs.readFileSync(path.join(process.cwd(), "templates", "post.html"), "utf-8");
 
-// 4. 解析所有 markdown 文章
+// 4. Parse all markdown posts
 const files = listPostFiles();
 const posts = files.map(parseMarkdownFile);
 
-// 5. 为每篇文章生成 html 页面
+// 5. Generate an HTML page for each post
 posts.forEach((post) => {
 const postHtml = renderTemplate(postTpl, {
 POST_TITLE: post.title,
@@ -75,8 +76,8 @@ const fullHtml = renderTemplate(layoutTpl, {
 fs.writeFileSync(path.join(docsDir, "posts", post.slug + ".html"), fullHtml, "utf-8");
 });
 
-// 6. 生成 posts.json 索引 (注意 url 字段格式：posts/<slug>.html)
-// savePostsIndex 会自动按 date 倒序排序并写入 docs/posts.json，同时把排好序的数组 return 回来
+// 6. Generate posts.json index (note the url field format: posts/<slug>.html)
+// savePostsIndex automatically sorts by date descending, writes docs/posts.json, and returns the sorted array
 const postsIndex = posts.map((post) => ({
 title: post.title,
 date: post.date,
@@ -89,10 +90,10 @@ excerpt: post.excerpt
 }));
 const sortedIndex = savePostsIndex(postsIndex);
 
-// 7. 用排好序的索引生成首页 (首页正文区域展示最近 N 篇文章，N 来自 blog.config.json 的 recentPostsCount)
+// 7. Use the sorted index to generate the homepage (the homepage body shows the most recent N posts, where N comes from blog.config.json's recentPostsCount)
 renderHomepage(config, sortedIndex);
 
-console.log(`构建完成，共 ${posts.length} 篇文章，输出到 docs/`);
+console.log(`Build complete, ${posts.length} posts, output to docs/`);
 }
 
 module.exports = { build, renderHomepage };

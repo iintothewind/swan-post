@@ -9,50 +9,50 @@ const { syncGists } = require("./gist-sync");
 
 program
 .name("swp-cli")
-.description("个人静态博客生成工具");
+.description("Personal static blog generator");
 
 program
 .command("build")
-.description("全量构建整个站点到 docs/ 目录")
+.description("Full build of the entire site to docs/ directory")
 .action(() => {
 build();
 });
 
 program
 .command("render <file>")
-.description("渲染单篇 markdown 文件为 html 并更新索引，不重建全站")
+.description("Render a single markdown file to HTML and update the index, without rebuilding the entire site")
 .action((file) => {
 renderOne(file);
 });
 
 program
 .command("new <slug>")
-.description("创建一篇新文章，slug 为纯英文短横线格式，例如 my-first-post")
-.option("-t, --title <title>", "文章标题 (可以是中文)")
+.description("Create a new post, slug in lowercase-hyphen format, e.g. my-first-post")
+.option("-t, --title <title>", "Post title (can be Chinese)")
 .action((slug, options) => {
 newPost(slug, options.title);
 });
 
 program
 .command("serve")
-.description("本地预览 docs/ 目录")
-.option("-p, --port <port>", "端口号", "8080")
+.description("Preview docs/ directory locally")
+.option("-p, --port <port>", "Port number", "8080")
 .action((options) => {
 serve(parseInt(options.port, 10));
 });
 
 program
 .command("deploy")
-.description("重新构建站点，并自动 git add/commit/push，触发 GitHub Pages 更新")
-.option("-m, --message <message>", "自定义 commit message")
+.description("Rebuild the site and auto git add/commit/push to trigger GitHub Pages update")
+.option("-m, --message <message>", "Custom commit message")
 .action((options) => {
 deploy(options.message);
 });
 
 program
 .command("gist-sync")
-.description("把 GitHub 用户的 public gist 同步为文章并合并到站点（删除已不存在的 gist 文章）")
-.option("-u, --user <user>", "GitHub 用户名（默认读 blog.config.json 的 githubUser）")
+.description("Sync a GitHub user's public gists as posts and merge into the site (delete gist posts that no longer exist)")
+.option("-u, --user <user>", "GitHub username (defaults to githubUser in blog.config.json)")
 .action((options) => {
 syncGists(options.user);
 });

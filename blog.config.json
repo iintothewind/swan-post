@@ -1,7 +1,7 @@
 {
-  "title": "我的博客",
+  "title": "My Blog",
   "author": "Ivar",
-  "description": "个人博客",
+  "description": "Personal Blog",
   "baseUrl": "",
   "recentPostsCount": 10,
   "sidebarPostCount": 200,

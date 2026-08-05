@@ -1,15 +1,15 @@
 /* ============================================================
-   swan-post —— 极简报刊风 (Newspaper Serif) 主题
-   仅皮肤层：不改动模板结构，所有类名/ID 与 templates/ 保持一致。
-   深色模式通过 CSS 变量 + prefers-color-scheme 自动切换。
+   swan-post —— Minimalist Newspaper Serif theme
+   Skin layer only: does not modify template structure; all class names/IDs match templates/.
+   Dark mode auto-switches via CSS variables + prefers-color-scheme.
    ============================================================ */
 
 :root {
   --sidebar-width: 300px;
-  --accent: #9a3324;            /* 报刊经典赭红 */
-  --accent-soft: #f4e8e4;       /* 浅红底（hover / 行内代码） */
-  --text: #24211c;              /* 印刷墨色 */
-  --bg: #fdfcfa;                /* 暖白纸感 */
+  --accent: #9a3324;            /* Classic newspaper ochre red */
+  --accent-soft: #f4e8e4;       /* Light red background (hover / inline code) */
+  --text: #24211c;              /* Print ink color */
+  --bg: #fdfcfa;                /* Warm white paper feel */
   --muted: #8d867b;
   --border: #e5dfd5;
   --sidebar-bg: #f6f2eb;
@@ -38,7 +38,7 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  /* 报刊衬线字体栈：英文 Georgia，中文依次回退到各平台宋体 */
+  /* Newspaper serif font stack: Georgia for English, fallback to platform serif fonts for Chinese */
   font-family: Georgia, "Times New Roman", "Noto Serif SC",
                "Source Han Serif SC", "Songti SC", "SimSun", serif;
   color: var(--text);
@@ -48,7 +48,7 @@ body {
   transition: background 0.25s ease, color 0.25s ease;
 }
 
-/* ---------- 侧栏开关按钮 ---------- */
+/* ---------- Sidebar toggle button ---------- */
 #sidebar-toggle {
   position: fixed;
   top: 18px;
@@ -70,7 +70,7 @@ body {
   color: var(--bg);
 }
 
-/* ---------- 侧栏 ---------- */
+/* ---------- Sidebar ---------- */
 #sidebar {
   position: fixed;
   top: 0;
@@ -89,7 +89,7 @@ body.sidebar-open #sidebar {
   transform: translateX(0);
 }
 
-/* 报头（masthead）感：标题大衬线 + 双线分隔 */
+/* Masthead feel: large serif title + double-line separator */
 .sidebar-header {
   padding: 0 24px 16px;
   border-bottom: 3px double var(--border);
@@ -154,7 +154,7 @@ body.sidebar-open #sidebar {
   color: var(--accent);
   padding-left: 28px;
 }
-/* 日期：小号斜体，报刊日期感 */
+/* Date: small italic, newspaper dateline feel */
 .post-list .post-item-date {
   display: block;
   font-size: 12px;
@@ -162,7 +162,7 @@ body.sidebar-open #sidebar {
   color: var(--muted);
 }
 
-/* ---------- 标签 ---------- */
+/* ---------- Tags ---------- */
 #tag-cloud {
   padding: 4px 24px 14px;
   display: flex;
@@ -191,7 +191,7 @@ body.sidebar-open #sidebar {
   font-weight: 600;
 }
 
-/* ---------- 遮罩 ---------- */
+/* ---------- Overlay ---------- */
 #overlay-mask {
   display: none;
   position: fixed;
@@ -203,14 +203,14 @@ body.sidebar-open #overlay-mask {
   display: block;
 }
 
-/* ---------- 主内容区 ---------- */
+/* ---------- Main content area ---------- */
 #content {
   max-width: 720px;
   margin: 0 auto;
   padding: 96px 28px 80px;
 }
 
-/* ---------- 文章页 ---------- */
+/* ---------- Post page ---------- */
 .post .back-home {
   display: inline-block;
   margin: 0 0 28px;
@@ -248,7 +248,7 @@ body.sidebar-open #overlay-mask {
   font-style: italic;
 }
 
-/* 标签：报刊细框小字 */
+/* Tags: newspaper thin-border small text */
 .tag-pill {
   display: inline-block;
   margin-left: 10px;
@@ -265,7 +265,7 @@ body.sidebar-open #overlay-mask {
   color: var(--accent);
 }
 
-/* ---------- 首页 ---------- */
+/* ---------- Home page ---------- */
 .home h1 {
   margin: 0 0 10px;
   font-size: 2.6rem;
@@ -314,7 +314,7 @@ body.sidebar-open #overlay-mask {
   line-height: 1.75;
 }
 
-/* ---------- Markdown 正文排版 ---------- */
+/* ---------- Markdown body typography ---------- */
 .post-body {
   font-size: 1.02rem;
   line-height: 1.85;
@@ -326,7 +326,7 @@ body.sidebar-open #overlay-mask {
   line-height: 1.35;
   color: var(--text);
 }
-/* 报刊小节标题：细线分隔 */
+/* Newspaper section heading: thin line separator */
 .post-body h2 {
   font-size: 1.5rem;
   padding-bottom: 0.35em;
@@ -372,7 +372,7 @@ body.sidebar-open #overlay-mask {
 .post-body blockquote > :last-child { margin-bottom: 0; }
 .post-body blockquote > :first-child { margin-top: 0; }
 
-/* 行内代码：浅红底 + accent 字 */
+/* Inline code: light red background + accent text */
 .post-body code:not([class*="language-"]) {
   background: var(--accent-soft);
   padding: 2px 6px;
@@ -382,7 +382,7 @@ body.sidebar-open #overlay-mask {
   color: var(--accent);
 }
 
-/* 代码块：纸感浅底 + 细边框（语言高亮块保留 Prism 主题原样） */
+/* Code block: paper-like light background + thin border (language-highlighted blocks keep Prism theme as-is) */
 .post-body pre:not([class*="language-"]) {
   background: var(--code-bg);
   padding: 18px 20px;
@@ -438,7 +438,7 @@ body.sidebar-open #overlay-mask {
 .post-body strong { font-weight: 700; }
 .post-body input[type="checkbox"] { margin-right: 8px; }
 
-/* ---------- 响应式：窄屏 ---------- */
+/* ---------- Responsive: narrow screen ---------- */
 @media (max-width: 640px) {
   #content {
     padding: 72px 20px 60px;
