@@ -26,3 +26,6 @@ docs/
 
 # bun 锁文件
 bun.lock
+
+# Reasonix
+.reasonix/
