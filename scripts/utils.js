@@ -34,7 +34,8 @@ return fs.readJsonSync(configPath);
 // Copy render-time static assets into the docs output directory.
 // overwrite=true → always copy (used by build(), which empties docs/ first).
 // overwrite=false → copy only missing targets (used by render(), preserving any
-// resources the user has manually tweaked in docs/).
+// resources the user has manually tweaked in docs/). After upgrading katex /
+// mermaid (or editing assets/), run a full build so docs/ picks up the new files.
 // Covers: css/js/prism from assets/, plus KaTeX css+fonts and mermaid.min.js from node_modules.
 function copyStaticAssets(docsDir, overwrite) {
 const copyIfNeeded = (src, dest) => {
@@ -69,7 +70,7 @@ const contentHtml = md.render(content);
 // keep server-rendered KaTeX markup and Mermaid source from flooding the excerpt with broken text.
 const excerptSource = contentHtml
 .replace(/<section[^>]*>\s*<eqn>[\s\S]*?<\/eqn>[\s\S]*?<\/section>/g, " [math] ")
-.replace(/<eq>[\s\S]*?<\/eq>/g, " math ")
+.replace(/<eq>[\s\S]*?<\/eq>/g, " [math] ")
 .replace(/<div class="mermaid">[\s\S]*?<\/div>/g, " [diagram] ");
 const plainText = md.utils.unescapeAll(excerptSource.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
 const excerpt = truncateGraphemes(plainText, 100);

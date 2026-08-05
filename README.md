@@ -8,7 +8,7 @@
 2. Articles use Hexo-style Markdown (YAML front-matter + body).
 3. CLI tool: render a single `.md` file directly to `.html` and publish it without rebuilding the entire site.
 4. LaTeX math support via KaTeX, rendered server-side at build time — inline `$...$` and block `$$...$$`; no JavaScript needed to display formulas.
-5. Mermaid diagram support, rendered client-side on page load — fenced ```` ```mermaid ```` blocks (flowchart, sequence, pie, etc.).
+5. Mermaid diagram support, rendered client-side on demand — fenced ```` ```mermaid ```` blocks (flowchart, sequence, pie, etc.); the bundle loads only when a page has diagrams.
 
 ## Non-Goals
 
@@ -141,6 +141,7 @@ $$
 - Numbered equations are supported: `$$ x^2 $$ (1)`.
 - Malformed math shows KaTeX's red error styling instead of failing the build.
 - The excerpt shown on the homepage replaces formulas with a `[math]` placeholder.
+- Escape literal dollar signs as `\$` when you mean currency or shell variables (e.g. `\$5`, `\$PATH`). Unescaped `$...$` pairs are always treated as math.
 
 ### Mermaid diagrams (client-side rendered)
 
@@ -154,9 +155,11 @@ graph TD
 ```
 ````
 
-- Diagrams render on page load via `mermaid.min.js` (shipped locally in `docs/js/`).
+- `mermaid.min.js` is shipped locally in `docs/js/`, but loaded only on pages that contain a diagram (homepage / plain posts skip the bundle).
 - The theme follows the site's auto dark/light mode (`prefers-color-scheme`) and re-renders when the system theme changes.
 - Requires JavaScript to display; keep an accessible text description nearby if it matters.
+
+> After upgrading `katex` / `mermaid` (or editing files under `assets/`), run a full `npx swp-cli build`. Incremental `render` only copies missing static assets and will not refresh already-copied vendor files in `docs/`.
 
 ## Configuration
 

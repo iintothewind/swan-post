@@ -200,11 +200,12 @@ Beyond standard Markdown, the renderer (Section 7.1) supports:
 - Inline: `$...$`, e.g. `$E = mc^2$` → inline KaTeX HTML.
 - Block: `$$...$$` on its own line → `<section><eqn><span class="katex-display">…</span></eqn></section>` (numbered form `$$ x^2 $$ (1)` emits `<section class="eqno">` with the number after `</eqn>`).
 - `throwOnError: false` renders malformed math with KaTeX's red error styling instead of throwing.
+- Literal `$` (currency, shell vars) must be escaped as `\$` in Markdown; unescaped `$...$` pairs are always treated as math.
 
 **Mermaid diagrams (client-side):**
-- A fenced block whose language is exactly `mermaid` is rendered to `<div class="mermaid">…</div>` (content HTML-escaped) and drawn by `mermaid.min.js` on page load. All other code fences keep the Prism path.
+- A fenced block whose language is exactly `mermaid` is rendered to `<div class="mermaid">…</div>` (content HTML-escaped). `layout.html` loads `mermaid.min.js` only when `.mermaid` nodes exist, then draws them client-side. All other code fences keep the Prism path.
 
-Both are masked in the post excerpt (see Section 7.1 `parseMarkdownFile`): block math → `[math]`, inline math → `math`, diagrams → `[diagram]`.
+Both are masked in the post excerpt (see Section 7.1 `parseMarkdownFile`): inline and block math → `[math]`, diagrams → `[diagram]`.
 
 ---
 
@@ -266,28 +267,39 @@ All template files use `{{KEY}}` placeholders. The build script performs simple 
 <script>window.BASE_URL = "{{BASE_URL}}";</script>
 <script>window.SIDEBAR_POST_COUNT = {{SIDEBAR_POST_COUNT}};</script>
 <script src="{{BASE_URL}}/prism/prism.min.js"></script>
-<script src="{{BASE_URL}}/js/mermaid.min.js"></script>
 <script>
 (function () {
-  // Mermaid diagrams: render client-side, following the site's auto dark/light mode
-  // (CSS variables + prefers-color-scheme). Re-render on system theme changes so
-  // already-drawn SVG picks up the new theme.
+  // Mermaid is loaded only when the page contains diagrams, so homepage / plain
+  // posts skip the ~3.5MB bundle. Source is cached in data-src because mermaid
+  // replaces innerHTML with SVG; theme changes must restore text before re-run.
+  var nodes = document.querySelectorAll(".mermaid");
+  if (!nodes.length) return;
+
   var darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  function renderDiagrams() {
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: darkQuery.matches ? "dark" : "default",
-      securityLevel: "strict"
-    });
-    document.querySelectorAll(".mermaid").forEach(function (el) {
-      el.removeAttribute("data-processed");
-    });
-    mermaid.run();
-  }
-  renderDiagrams();
-  if (darkQuery.addEventListener) {
-    darkQuery.addEventListener("change", renderDiagrams);
-  }
+  var script = document.createElement("script");
+  script.src = (window.BASE_URL || "") + "/js/mermaid.min.js";
+  script.onload = function () {
+    function renderDiagrams() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: darkQuery.matches ? "dark" : "default",
+        securityLevel: "strict"
+      });
+      document.querySelectorAll(".mermaid").forEach(function (el) {
+        if (!el.getAttribute("data-src")) {
+          el.setAttribute("data-src", el.textContent);
+        }
+        el.removeAttribute("data-processed");
+        el.textContent = el.getAttribute("data-src");
+      });
+      mermaid.run();
+    }
+    renderDiagrams();
+    if (darkQuery.addEventListener) {
+      darkQuery.addEventListener("change", renderDiagrams);
+    }
+  };
+  document.body.appendChild(script);
 })();
 </script>
 <script src="{{BASE_URL}}/js/main.js"></script>
@@ -296,7 +308,7 @@ All template files use `{{KEY}}` placeholders. The build script performs simple 
 ```
 
 - `katex.min.css` is referenced so server-rendered formula HTML picks up KaTeX styles and fonts (fonts resolve via relative paths from `docs/katex/`).
-- `mermaid.min.js` + the inline initializer draw `.mermaid` elements; `theme` follows `prefers-color-scheme` and re-renders on change. `startOnLoad: false` because rendering is driven manually by `mermaid.run()`.
+- Mermaid is loaded on demand: the inline initializer bails out when there are no `.mermaid` nodes; otherwise it injects `docs/js/mermaid.min.js`, caches each node's source in `data-src`, and calls `mermaid.run()`. On `prefers-color-scheme` changes it restores `textContent` from `data-src` before re-running (mermaid replaces innerHTML with SVG, so clearing `data-processed` alone is not enough). `startOnLoad: false` because rendering is driven manually.
 
 > Placeholder list: `PAGE_TITLE` (page title), `SITE_TITLE` (site name), `BASE_URL` (deployment root path; all static resource/link references must prepend this prefix), `SIDEBAR_POST_COUNT` (max posts shown in the sidebar timeline, from `blog.config.json`'s `sidebarPostCount`, default 200), `CONTENT` (content area fragment: homepage or post page).
 
@@ -865,7 +877,8 @@ return fs.readJsonSync(configPath);
 // Copy render-time static assets into the docs output directory.
 // overwrite=true → always copy (used by build(), which empties docs/ first).
 // overwrite=false → copy only missing targets (used by render(), preserving any
-// resources the user has manually tweaked in docs/).
+// resources the user has manually tweaked in docs/). After upgrading katex /
+// mermaid (or editing assets/), run a full build so docs/ picks up the new files.
 // Covers: css/js/prism from assets/, plus KaTeX css+fonts and mermaid.min.js from node_modules.
 function copyStaticAssets(docsDir, overwrite) {
 const copyIfNeeded = (src, dest) => {
@@ -901,7 +914,7 @@ const contentHtml = md.render(content);
 // The section regex matches both plain and numbered (`<section class="eqno">`) block formulas.
 const excerptSource = contentHtml
 .replace(/<section[^>]*>\s*<eqn>[\s\S]*?<\/eqn>[\s\S]*?<\/section>/g, " [math] ")
-.replace(/<eq>[\s\S]*?<\/eq>/g, " math ")
+.replace(/<eq>[\s\S]*?<\/eq>/g, " [math] ")
 .replace(/<div class="mermaid">[\s\S]*?<\/div>/g, " [diagram] ");
 const plainText = md.utils.unescapeAll(excerptSource.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
 const excerpt = truncateGraphemes(plainText, 100);
@@ -1733,8 +1746,8 @@ swp-cli deploy -m "Wrote a new post"
 - [ ] The sidebar timeline view correctly displays all posts in reverse chronological order.
 - [ ] The sidebar tags view correctly groups by tag; clicking a tag filters to show the corresponding post list.
 - [ ] Post pages correctly display the title, date, tags, and Markdown-rendered body (code blocks, images, lists, and other common Markdown syntax all render correctly).
-- [ ] Math renders correctly: `$...$` inline and `$$...$$` block (including numbered `$$ x $$ (1)`) appear as KaTeX HTML in the post page with no JS required; `docs/katex/katex.min.css` and `docs/katex/fonts/` are present; the homepage excerpt shows `[math]` instead of raw formula markup.
-- [ ] Mermaid renders correctly: a ` ```mermaid ` fenced block appears as `<div class="mermaid">` in the post page and is drawn client-side (dark/light theme follows `prefers-color-scheme`); `docs/js/mermaid.min.js` is present; the homepage excerpt shows `[diagram]`.
+- [ ] Math renders correctly: `$...$` inline and `$$...$$` block (including numbered `$$ x $$ (1)`) appear as KaTeX HTML in the post page with no JS required; `docs/katex/katex.min.css` and `docs/katex/fonts/` are present; the homepage excerpt shows `[math]` for both inline and block formulas instead of raw formula markup; literal `\$` is left as `$`.
+- [ ] Mermaid renders correctly: a ` ```mermaid ` fenced block appears as `<div class="mermaid">` in the post page; `mermaid.min.js` is loaded only on pages that contain diagrams; dark/light theme follows `prefers-color-scheme` and survives theme changes via `data-src` restore; `docs/js/mermaid.min.js` is present; the homepage excerpt shows `[diagram]`.
 - [ ] All static resource paths (css/js/posts.json) on every page load correctly under both empty and non-empty `baseUrl` configurations (at minimum verify `baseUrl: ""`; for non-empty `baseUrl`, manually check that the code logic is self-consistent).
 - [ ] The `docs/` directory is a build artifact, already in `.gitignore`, and not committed to the source repo. It is pushed to a separate GitHub Pages repo via the `deploy` command.
 - [ ] `swp-cli gist-sync` (or `node scripts/cli.js gist-sync`) can fetch all public gists of `githubUser` that contain Markdown files, generate posts with `gist_id` front-matter into `source/_posts/`, and rebuild; when a gist is deleted, the corresponding local post is cleaned up.
