@@ -78,7 +78,7 @@ async function syncGistsCore({ user, token, baseDir, onProgress }) {
 
   const gists = await fetchPublicGists(user, token);
   const remoteIds = new Set();
-  let added = 0, updated = 0, skipped = 0;
+  let added = 0, updated = 0, skipped = 0, unchanged = 0;
 
   for (const gist of gists) {
     const file = pickMarkdownFile(gist);
@@ -93,8 +93,17 @@ async function syncGistsCore({ user, token, baseDir, onProgress }) {
 
     const datePrefix = toLocalDateStr(gist.created_at).slice(0, 10);
     const target = path.join(postsDir, datePrefix + "-" + gist.id + ".md");
+    const newContent = buildPostContent(gist, file.filename, content);
     const existed = fs.existsSync(target);
-    fs.writeFileSync(target, buildPostContent(gist, file.filename, content), "utf-8");
+    if (existed) {
+      const oldContent = fs.readFileSync(target, "utf-8");
+      if (oldContent === newContent) {
+        unchanged++;
+        if (onProgress) onProgress("未变: " + file.filename);
+        continue;
+      }
+    }
+    fs.writeFileSync(target, newContent, "utf-8");
     if (existed) { updated++; } else { added++; }
     if (onProgress) onProgress((existed ? "更新" : "新增") + ": " + file.filename);
   }
@@ -112,7 +121,7 @@ async function syncGistsCore({ user, token, baseDir, onProgress }) {
     }
   });
 
-  return { total: gists.length, added, updated, removed, skipped };
+  return { total: gists.length, added, updated, removed, skipped, unchanged };
 }
 
 // CLI 入口：--user 优先，否则读 blog.config.json 的 githubUser；
@@ -133,7 +142,7 @@ async function syncGists(userOption) {
       onProgress: (line) => console.log("  " + line)
     });
     console.log("同步完成：共拉取 " + stats.total + " 个 gist，"
-      + "新增 " + stats.added + " 篇，更新 " + stats.updated + " 篇，删除 " + stats.removed + " 篇，"
+      + "新增 " + stats.added + " 篇，更新 " + stats.updated + " 篇，未变 " + stats.unchanged + " 篇，删除 " + stats.removed + " 篇，"
       + "跳过 " + stats.skipped + " 个（无 Markdown 文件）");
     console.log("== 重新构建站点 ==");
     build();
