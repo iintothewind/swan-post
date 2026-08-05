@@ -1,7 +1,7 @@
 const fs = require("fs-extra");
 const path = require("path");
 const {
-loadConfig, parseMarkdownFile, renderTemplate,
+loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
 listPostFiles, renderTagsHtml, renderRecentPostsHtml, savePostsIndex
 } = require("./utils");
 
@@ -40,14 +40,9 @@ const docsDir = path.join(process.cwd(), "docs");
 // 1. Clear and rebuild the docs directory structure
 fs.emptyDirSync(docsDir);
 fs.ensureDirSync(path.join(docsDir, "posts"));
-fs.ensureDirSync(path.join(docsDir, "css"));
-fs.ensureDirSync(path.join(docsDir, "js"));
-fs.ensureDirSync(path.join(docsDir, "prism"));
 
-  // 2. Copy static assets
-  fs.copySync(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
-  fs.copySync(path.join(process.cwd(), "assets", "js"), path.join(docsDir, "js"));
-  fs.copySync(path.join(process.cwd(), "assets", "prism"), path.join(docsDir, "prism"));
+  // 2. Copy static assets (css/js/prism from assets/, katex + mermaid from node_modules)
+  copyStaticAssets(docsDir, true);
 
 // 3. Read post templates (layout and homepage templates are read later during homepage generation, handled internally by renderHomepage)
 const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");

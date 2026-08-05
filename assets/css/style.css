@@ -404,6 +404,32 @@ body.sidebar-open #overlay-mask {
   border-radius: 4px;
 }
 
+/* Mermaid diagrams: centered, horizontally scrollable on narrow screens */
+.post-body .mermaid {
+  margin: 1.4em 0;
+  text-align: center;
+  overflow-x: auto;
+}
+.post-body .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Math: block formulas scroll instead of overflowing the column; keep the
+   custom <eq>/<eqn> wrappers emitted by markdown-it-texmath inline/block */
+.post-body eq {
+  display: inline-block;
+}
+.post-body eqn {
+  display: block;
+}
+.post-body .katex-display {
+  margin: 1.4em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.2em 0;
+}
+
 .post-body table {
   width: 100%;
   max-width: 100%;

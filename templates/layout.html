@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{PAGE_TITLE}} - {{SITE_TITLE}}</title>
 <link rel="stylesheet" href="{{BASE_URL}}/prism/prism-monokai.min.css">
+<link rel="stylesheet" href="{{BASE_URL}}/katex/katex.min.css">
 <link rel="stylesheet" href="{{BASE_URL}}/css/style.css">
 </head>
 <body>
@@ -36,6 +37,30 @@
 <script>window.BASE_URL = "{{BASE_URL}}";</script>
 <script>window.SIDEBAR_POST_COUNT = {{SIDEBAR_POST_COUNT}};</script>
 <script src="{{BASE_URL}}/prism/prism.min.js"></script>
+<script src="{{BASE_URL}}/js/mermaid.min.js"></script>
+<script>
+(function () {
+  // Mermaid diagrams: render client-side, following the site's auto dark/light mode
+  // (CSS variables + prefers-color-scheme). Re-render on system theme changes so
+  // already-drawn SVG picks up the new theme.
+  var darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  function renderDiagrams() {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: darkQuery.matches ? "dark" : "default",
+      securityLevel: "strict"
+    });
+    document.querySelectorAll(".mermaid").forEach(function (el) {
+      el.removeAttribute("data-processed");
+    });
+    mermaid.run();
+  }
+  renderDiagrams();
+  if (darkQuery.addEventListener) {
+    darkQuery.addEventListener("change", renderDiagrams);
+  }
+})();
+</script>
 <script src="{{BASE_URL}}/js/main.js"></script>
 </body>
 </html>

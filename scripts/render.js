@@ -1,7 +1,7 @@
 const fs = require("fs-extra");
 const path = require("path");
 const {
-loadConfig, parseMarkdownFile, renderTemplate,
+loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
 renderTagsHtml, loadPostsIndex, savePostsIndex
 } = require("./utils");
 const { renderHomepage } = require("./build");
@@ -12,19 +12,9 @@ const docsDir = path.join(process.cwd(), "docs");
 
 // 1. If the docs directory doesn't have the basic structure yet, do minimal init (css/js/prism/posts dirs)
 fs.ensureDirSync(path.join(docsDir, "posts"));
-fs.ensureDirSync(path.join(docsDir, "css"));
-fs.ensureDirSync(path.join(docsDir, "js"));
-fs.ensureDirSync(path.join(docsDir, "prism"));
-// Only copy when the file doesn't exist, to avoid overwriting resources the user may have manually updated
-if (!fs.existsSync(path.join(docsDir, "css", "style.css"))) {
-fs.copySync(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
-}
-if (!fs.existsSync(path.join(docsDir, "js", "main.js"))) {
-fs.copySync(path.join(process.cwd(), "assets", "js"), path.join(docsDir, "js"));
-}
-if (!fs.existsSync(path.join(docsDir, "prism", "prism.min.js"))) {
-fs.copySync(path.join(process.cwd(), "assets", "prism"), path.join(docsDir, "prism"));
-}
+// Copy static assets (css/js/prism from assets/, katex + mermaid from node_modules);
+// only copy missing files, to avoid overwriting resources the user may have manually updated
+copyStaticAssets(docsDir, false);
 
 // 2. Parse this markdown file
 const absPath = path.isAbsolute(mdFilePath) ? mdFilePath : path.join(process.cwd(), mdFilePath);

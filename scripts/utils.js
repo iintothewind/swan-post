@@ -2,16 +2,56 @@ const fs = require("fs-extra");
 const path = require("path");
 const matter = require("gray-matter");
 const MarkdownIt = require("markdown-it");
+const texmath = require("markdown-it-texmath");
+const katex = require("katex");
 
 const md = new MarkdownIt({
 html: true,
 linkify: true,
 });
+// Math support: $...$ inline and $$...$$ block (LaTeX), rendered server-side to KaTeX HTML.
+// throwOnError: false → render malformed math as KaTeX's red error output instead of throwing.
+md.use(texmath, { engine: katex, delimiters: "dollars", katexOptions: { throwOnError: false } });
+
+// Mermaid support: turn ```mermaid fenced blocks into a <div class="mermaid"> for client-side
+// rendering (mermaid.js renders these on page load). Content is HTML-escaped to keep diagram
+// syntax intact; all other code fences keep the default Prism path.
+const defaultFence = md.renderer.rules.fence;
+md.renderer.rules.fence = function (tokens, idx, options, env, self) {
+const token = tokens[idx];
+if (token.info.trim() === "mermaid") {
+return `<div class="mermaid">${md.utils.escapeHtml(token.content)}</div>`;
+}
+return defaultFence(tokens, idx, options, env, self);
+};
 
 // Read blog.config.json, return the config object
 function loadConfig() {
 const configPath = path.join(process.cwd(), "blog.config.json");
 return fs.readJsonSync(configPath);
+}
+
+// Copy render-time static assets into the docs output directory.
+// overwrite=true → always copy (used by build(), which empties docs/ first).
+// overwrite=false → copy only missing targets (used by render(), preserving any
+// resources the user has manually tweaked in docs/).
+// Covers: css/js/prism from assets/, plus KaTeX css+fonts and mermaid.min.js from node_modules.
+function copyStaticAssets(docsDir, overwrite) {
+const copyIfNeeded = (src, dest) => {
+if (overwrite) {
+fs.copySync(src, dest);
+} else if (!fs.existsSync(dest)) {
+fs.copySync(src, dest);
+}
+};
+copyIfNeeded(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
+copyIfNeeded(path.join(process.cwd(), "assets", "js"), path.join(docsDir, "js"));
+copyIfNeeded(path.join(process.cwd(), "assets", "prism"), path.join(docsDir, "prism"));
+// KaTeX: katex.min.css references fonts via relative paths, so keep the katex/ dir layout intact
+copyIfNeeded(path.join(process.cwd(), "node_modules", "katex", "dist", "katex.min.css"), path.join(docsDir, "katex", "katex.min.css"));
+copyIfNeeded(path.join(process.cwd(), "node_modules", "katex", "dist", "fonts"), path.join(docsDir, "katex", "fonts"));
+// Mermaid: rendered client-side, shipped as a single JS bundle next to main.js
+copyIfNeeded(path.join(process.cwd(), "node_modules", "mermaid", "dist", "mermaid.min.js"), path.join(docsDir, "js", "mermaid.min.js"));
 }
 
 // Parse a single markdown file, returns:
@@ -22,10 +62,16 @@ const raw = fs.readFileSync(filePath, "utf-8");
 const { data, content } = matter(raw);
 const slug = path.basename(filePath, ".md");
 const contentHtml = md.render(content);
-// Generate excerpt: strip HTML tags → decode entities (&amp; → &, using markdown-it's built-in unescapeAll
-// to avoid a hand-rolled incomplete entity table) → normalize whitespace → truncate to 100 visible graphemes
-// (Intl.Segmenter splits by user-perceived characters, won't cut in the middle of an emoji / surrogate pair).
-const plainText = md.utils.unescapeAll(contentHtml.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
+// Generate excerpt: replace math/diagram markup with placeholders first, then strip HTML tags → decode
+// entities (&amp; → &, using markdown-it's built-in unescapeAll to avoid a hand-rolled incomplete entity
+// table) → normalize whitespace → truncate to 100 visible graphemes (Intl.Segmenter splits by
+// user-perceived characters, won't cut in the middle of an emoji / surrogate pair). The placeholders
+// keep server-rendered KaTeX markup and Mermaid source from flooding the excerpt with broken text.
+const excerptSource = contentHtml
+.replace(/<section[^>]*>\s*<eqn>[\s\S]*?<\/eqn>[\s\S]*?<\/section>/g, " [math] ")
+.replace(/<eq>[\s\S]*?<\/eq>/g, " math ")
+.replace(/<div class="mermaid">[\s\S]*?<\/div>/g, " [diagram] ");
+const plainText = md.utils.unescapeAll(excerptSource.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
 const excerpt = truncateGraphemes(plainText, 100);
 const rawDate = data.date instanceof Date ? data.date : (data.date ? new Date(data.date) : null);
 const dateStr = rawDate ? rawDate.toISOString() : "";
@@ -154,7 +200,7 @@ return sorted;
 }
 
 module.exports = {
-loadConfig, parseMarkdownFile, renderTemplate, listPostFiles,
+loadConfig, copyStaticAssets, parseMarkdownFile, renderTemplate, listPostFiles,
 renderTagsHtml, sortPostsByDateDesc, renderRecentPostsHtml,
 loadPostsIndex, savePostsIndex
 };
