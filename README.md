@@ -7,6 +7,8 @@
 1. Fixed layout: left sidebar (article list + navigation), hidden by default, toggled by a button; main content displayed on the right.
 2. Articles use Hexo-style Markdown (YAML front-matter + body).
 3. CLI tool: render a single `.md` file directly to `.html` and publish it without rebuilding the entire site.
+4. LaTeX math support via KaTeX, rendered server-side at build time — inline `$...$` and block `$$...$$`; no JavaScript needed to display formulas.
+5. Mermaid diagram support, rendered client-side on page load — fenced ```` ```mermaid ```` blocks (flowchart, sequence, pie, etc.).
 
 ## Non-Goals
 
@@ -118,6 +120,43 @@ Body content in standard Markdown syntax.
 ```
 
 Filename format: `<slug>.md`, where the slug is specified by the user on the command line (lowercase letters, digits, and hyphens only).
+
+## Markdown Extensions
+
+### Math (KaTeX, server-side rendered)
+
+Inline math uses `$...$`, block math uses `$$...$$`:
+
+```markdown
+Inline: $E = mc^2$
+
+Block:
+
+$$
+\int_0^1 x^2 \, dx = \frac{1}{3}
+$$
+```
+
+- Formulas are rendered to HTML at build time — they display even with JavaScript disabled.
+- Numbered equations are supported: `$$ x^2 $$ (1)`.
+- Malformed math shows KaTeX's red error styling instead of failing the build.
+- The excerpt shown on the homepage replaces formulas with a `[math]` placeholder.
+
+### Mermaid diagrams (client-side rendered)
+
+Wrap a diagram in a ` ```mermaid ` fenced block:
+
+````markdown
+```mermaid
+graph TD
+    A[Start] --> B{Decision}
+    B -->|yes| C[End]
+```
+````
+
+- Diagrams render on page load via `mermaid.min.js` (shipped locally in `docs/js/`).
+- The theme follows the site's auto dark/light mode (`prefers-color-scheme`) and re-renders when the system theme changes.
+- Requires JavaScript to display; keep an accessible text description nearby if it matters.
 
 ## Configuration
 

@@ -45,12 +45,18 @@ Build a personal static blog generator in Node.js as a replacement for Hexo, wit
     "commander": "^12.0.0",
     "gray-matter": "^4.0.3",
     "markdown-it": "^14.0.0",
+    "markdown-it-texmath": "^1.0.0",
+    "katex": "^0.18.1",
+    "mermaid": "^11.16.1",
     "fs-extra": "^11.0.0"
   }
 }
 ```
 
-Do not add any third-party packages beyond the four listed above.
+Do not add any third-party packages beyond the seven listed above.
+
+- `markdown-it-texmath` + `katex`: server-side LaTeX math rendering (`$...$` inline, `$$...$$` block, numbered equations via `$$ x $$ (1)`).
+- `mermaid`: client-side diagram rendering; only `dist/mermaid.min.js` is shipped into the build output (see Section 7.1 `copyStaticAssets`).
 
 ---
 
@@ -88,7 +94,8 @@ swan-post/
 ├── docs/                         # [Output directory] Build artifacts, pushed to a separate Pages repo by deploy; do not edit manually
 │   ├── index.html                # Homepage (recent N posts, server-rendered)
 │   ├── posts.json                # Post index (fetched at runtime by frontend sidebar)
-│   └── posts/<slug>.html         # Post pages
+│   ├── katex/                    # KaTeX css + fonts (copied from node_modules/katex/dist, see Section 7.1)
+│   └── posts/<slug>.html         # Post pages (js/ also contains mermaid.min.js for client-side diagrams)
 └── README.md
 ```
 
@@ -185,6 +192,20 @@ Field descriptions:
 
 Always use the `gray-matter` library to parse this front-matter. **Do not write your own YAML parser.**
 
+### Markdown extensions
+
+Beyond standard Markdown, the renderer (Section 7.1) supports:
+
+**Math (server-side, KaTeX):**
+- Inline: `$...$`, e.g. `$E = mc^2$` → inline KaTeX HTML.
+- Block: `$$...$$` on its own line → `<section><eqn><span class="katex-display">…</span></eqn></section>` (numbered form `$$ x^2 $$ (1)` emits `<section class="eqno">` with the number after `</eqn>`).
+- `throwOnError: false` renders malformed math with KaTeX's red error styling instead of throwing.
+
+**Mermaid diagrams (client-side):**
+- A fenced block whose language is exactly `mermaid` is rendered to `<div class="mermaid">…</div>` (content HTML-escaped) and drawn by `mermaid.min.js` on page load. All other code fences keep the Prism path.
+
+Both are masked in the post excerpt (see Section 7.1 `parseMarkdownFile`): block math → `[math]`, inline math → `math`, diagrams → `[diagram]`.
+
 ---
 
 ## 5. Page and Interaction Design
@@ -207,12 +228,13 @@ All template files use `{{KEY}}` placeholders. The build script performs simple 
 
 ```html
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{PAGE_TITLE}} - {{SITE_TITLE}}</title>
 <link rel="stylesheet" href="{{BASE_URL}}/prism/prism-monokai.min.css">
+<link rel="stylesheet" href="{{BASE_URL}}/katex/katex.min.css">
 <link rel="stylesheet" href="{{BASE_URL}}/css/style.css">
 </head>
 <body>
@@ -244,10 +266,37 @@ All template files use `{{KEY}}` placeholders. The build script performs simple 
 <script>window.BASE_URL = "{{BASE_URL}}";</script>
 <script>window.SIDEBAR_POST_COUNT = {{SIDEBAR_POST_COUNT}};</script>
 <script src="{{BASE_URL}}/prism/prism.min.js"></script>
+<script src="{{BASE_URL}}/js/mermaid.min.js"></script>
+<script>
+(function () {
+  // Mermaid diagrams: render client-side, following the site's auto dark/light mode
+  // (CSS variables + prefers-color-scheme). Re-render on system theme changes so
+  // already-drawn SVG picks up the new theme.
+  var darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  function renderDiagrams() {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: darkQuery.matches ? "dark" : "default",
+      securityLevel: "strict"
+    });
+    document.querySelectorAll(".mermaid").forEach(function (el) {
+      el.removeAttribute("data-processed");
+    });
+    mermaid.run();
+  }
+  renderDiagrams();
+  if (darkQuery.addEventListener) {
+    darkQuery.addEventListener("change", renderDiagrams);
+  }
+})();
+</script>
 <script src="{{BASE_URL}}/js/main.js"></script>
 </body>
 </html>
 ```
+
+- `katex.min.css` is referenced so server-rendered formula HTML picks up KaTeX styles and fonts (fonts resolve via relative paths from `docs/katex/`).
+- `mermaid.min.js` + the inline initializer draw `.mermaid` elements; `theme` follows `prefers-color-scheme` and re-renders on change. `startOnLoad: false` because rendering is driven manually by `mermaid.run()`.
 
 > Placeholder list: `PAGE_TITLE` (page title), `SITE_TITLE` (site name), `BASE_URL` (deployment root path; all static resource/link references must prepend this prefix), `SIDEBAR_POST_COUNT` (max posts shown in the sidebar timeline, from `blog.config.json`'s `sidebarPostCount`, default 200), `CONTENT` (content area fragment: homepage or post page).
 
@@ -618,6 +667,36 @@ color: #fff;
 }
 ```
 
+Additional styles for math and diagrams (appended in `assets/css/style.css` after the code-block rules):
+
+```css
+/* Mermaid diagrams: centered, horizontally scrollable on narrow screens */
+.post-body .mermaid {
+  margin: 1.4em 0;
+  text-align: center;
+  overflow-x: auto;
+}
+.post-body .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Math: block formulas scroll instead of overflowing the column; keep the
+   custom <eq>/<eqn> wrappers emitted by markdown-it-texmath inline/block */
+.post-body eq {
+  display: inline-block;
+}
+.post-body eqn {
+  display: block;
+}
+.post-body .katex-display {
+  margin: 1.4em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.2em 0;
+}
+```
+
 ### 5.4 JS (`assets/js/main.js`, use directly)
 
 ```javascript
@@ -754,16 +833,56 @@ const fs = require("fs-extra");
 const path = require("path");
 const matter = require("gray-matter");
 const MarkdownIt = require("markdown-it");
+const texmath = require("markdown-it-texmath");
+const katex = require("katex");
 
 const md = new MarkdownIt({
 html: true,
 linkify: true,
 });
+// Math support: $...$ inline and $$...$$ block (LaTeX), rendered server-side to KaTeX HTML.
+// throwOnError: false → render malformed math as KaTeX's red error output instead of throwing.
+md.use(texmath, { engine: katex, delimiters: "dollars", katexOptions: { throwOnError: false } });
+
+// Mermaid support: turn ```mermaid fenced blocks into a <div class="mermaid"> for client-side
+// rendering (mermaid.js renders these on page load). Content is HTML-escaped to keep diagram
+// syntax intact; all other code fences keep the default Prism path.
+const defaultFence = md.renderer.rules.fence;
+md.renderer.rules.fence = function (tokens, idx, options, env, self) {
+const token = tokens[idx];
+if (token.info.trim() === "mermaid") {
+return `<div class="mermaid">${md.utils.escapeHtml(token.content)}</div>`;
+}
+return defaultFence(tokens, idx, options, env, self);
+};
 
 // Read blog.config.json and return the config object
 function loadConfig() {
 const configPath = path.join(process.cwd(), "blog.config.json");
 return fs.readJsonSync(configPath);
+}
+
+// Copy render-time static assets into the docs output directory.
+// overwrite=true → always copy (used by build(), which empties docs/ first).
+// overwrite=false → copy only missing targets (used by render(), preserving any
+// resources the user has manually tweaked in docs/).
+// Covers: css/js/prism from assets/, plus KaTeX css+fonts and mermaid.min.js from node_modules.
+function copyStaticAssets(docsDir, overwrite) {
+const copyIfNeeded = (src, dest) => {
+if (overwrite) {
+fs.copySync(src, dest);
+} else if (!fs.existsSync(dest)) {
+fs.copySync(src, dest);
+}
+};
+copyIfNeeded(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
+copyIfNeeded(path.join(process.cwd(), "assets", "js"), path.join(docsDir, "js"));
+copyIfNeeded(path.join(process.cwd(), "assets", "prism"), path.join(docsDir, "prism"));
+// KaTeX: katex.min.css references fonts via relative paths, so keep the katex/ dir layout intact
+copyIfNeeded(path.join(process.cwd(), "node_modules", "katex", "dist", "katex.min.css"), path.join(docsDir, "katex", "katex.min.css"));
+copyIfNeeded(path.join(process.cwd(), "node_modules", "katex", "dist", "fonts"), path.join(docsDir, "katex", "fonts"));
+// Mermaid: rendered client-side, shipped as a single JS bundle next to main.js
+copyIfNeeded(path.join(process.cwd(), "node_modules", "mermaid", "dist", "mermaid.min.js"), path.join(docsDir, "js", "mermaid.min.js"));
 }
 
 // Parse a single markdown file, returning:
@@ -774,10 +893,17 @@ const raw = fs.readFileSync(filePath, "utf-8");
 const { data, content } = matter(raw);
 const slug = path.basename(filePath, ".md");
 const contentHtml = md.render(content);
-// Generate excerpt: strip HTML tags → decode entities (&amp; → &, using markdown-it's built-in unescapeAll
-// to avoid a hand-rolled incomplete entity table) → normalize whitespace → truncate to 100 visible graphemes
-// (Intl.Segmenter splits by user-perceived characters, won't cut a half emoji / surrogate pair).
-const plainText = md.utils.unescapeAll(contentHtml.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
+// Generate excerpt: replace math/diagram markup with placeholders first, then strip HTML tags → decode
+// entities (&amp; → &, using markdown-it's built-in unescapeAll to avoid a hand-rolled incomplete entity
+// table) → normalize whitespace → truncate to 100 visible graphemes (Intl.Segmenter splits by
+// user-perceived characters, won't cut a half emoji / surrogate pair). The placeholders keep
+// server-rendered KaTeX markup and Mermaid source from flooding the excerpt with broken text.
+// The section regex matches both plain and numbered (`<section class="eqno">`) block formulas.
+const excerptSource = contentHtml
+.replace(/<section[^>]*>\s*<eqn>[\s\S]*?<\/eqn>[\s\S]*?<\/section>/g, " [math] ")
+.replace(/<eq>[\s\S]*?<\/eq>/g, " math ")
+.replace(/<div class="mermaid">[\s\S]*?<\/div>/g, " [diagram] ");
+const plainText = md.utils.unescapeAll(excerptSource.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
 const excerpt = truncateGraphemes(plainText, 100);
 const rawDate = data.date instanceof Date ? data.date : (data.date ? new Date(data.date) : null);
 const dateStr = rawDate ? rawDate.toISOString() : "";
@@ -906,7 +1032,7 @@ return sorted;
 }
 
 module.exports = {
-loadConfig, parseMarkdownFile, renderTemplate, listPostFiles,
+loadConfig, copyStaticAssets, parseMarkdownFile, renderTemplate, listPostFiles,
 renderTagsHtml, sortPostsByDateDesc, renderRecentPostsHtml,
 loadPostsIndex, savePostsIndex
 };
@@ -920,7 +1046,7 @@ loadPostsIndex, savePostsIndex
 const fs = require("fs-extra");
 const path = require("path");
 const {
-loadConfig, parseMarkdownFile, renderTemplate,
+loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
 listPostFiles, renderTagsHtml, renderRecentPostsHtml, savePostsIndex
 } = require("./utils");
 
@@ -959,14 +1085,9 @@ const docsDir = path.join(process.cwd(), "docs");
 // 1. Clear and recreate the docs directory structure
 fs.emptyDirSync(docsDir);
 fs.ensureDirSync(path.join(docsDir, "posts"));
-fs.ensureDirSync(path.join(docsDir, "css"));
-fs.ensureDirSync(path.join(docsDir, "js"));
-fs.ensureDirSync(path.join(docsDir, "prism"));
 
-  // 2. Copy static assets
-  fs.copySync(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
-  fs.copySync(path.join(process.cwd(), "assets", "js"), path.join(docsDir, "js"));
-  fs.copySync(path.join(process.cwd(), "assets", "prism"), path.join(docsDir, "prism"));
+  // 2. Copy static assets (css/js/prism from assets/, katex + mermaid from node_modules)
+  copyStaticAssets(docsDir, true);
 
 // 3. Read post templates (layout and homepage templates are read later in the homepage generation step, handled internally by renderHomepage)
 const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
@@ -1026,7 +1147,7 @@ module.exports = { build, renderHomepage };
 const fs = require("fs-extra");
 const path = require("path");
 const {
-loadConfig, parseMarkdownFile, renderTemplate,
+loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
 renderTagsHtml, loadPostsIndex, savePostsIndex
 } = require("./utils");
 const { renderHomepage } = require("./build");
@@ -1035,21 +1156,11 @@ function renderOne(mdFilePath) {
 const config = loadConfig();
 const docsDir = path.join(process.cwd(), "docs");
 
-// 1. If the docs directory doesn't yet have the basic structure, do minimal initialization first (css/js/prism/posts dirs)
+// 1. If the docs directory doesn't yet have the basic structure, do minimal initialization first (posts dir)
 fs.ensureDirSync(path.join(docsDir, "posts"));
-fs.ensureDirSync(path.join(docsDir, "css"));
-fs.ensureDirSync(path.join(docsDir, "js"));
-fs.ensureDirSync(path.join(docsDir, "prism"));
-// Only copy when the file doesn't exist, to avoid overwriting resources the user may have manually updated
-if (!fs.existsSync(path.join(docsDir, "css", "style.css"))) {
-fs.copySync(path.join(process.cwd(), "assets", "css"), path.join(docsDir, "css"));
-}
-if (!fs.existsSync(path.join(docsDir, "js", "main.js"))) {
-fs.copySync(path.join(process.cwd(), "assets", "js"), path.join(docsDir, "js"));
-}
-if (!fs.existsSync(path.join(docsDir, "prism", "prism.min.js"))) {
-fs.copySync(path.join(process.cwd(), "assets", "prism"), path.join(docsDir, "prism"));
-}
+// Copy static assets (css/js/prism from assets/, katex + mermaid from node_modules);
+// only copy missing files, to avoid overwriting resources the user may have manually updated
+copyStaticAssets(docsDir, false);
 
 // 2. Parse this single markdown file
 const absPath = path.isAbsolute(mdFilePath) ? mdFilePath : path.join(process.cwd(), mdFilePath);
@@ -1622,6 +1733,8 @@ swp-cli deploy -m "Wrote a new post"
 - [ ] The sidebar timeline view correctly displays all posts in reverse chronological order.
 - [ ] The sidebar tags view correctly groups by tag; clicking a tag filters to show the corresponding post list.
 - [ ] Post pages correctly display the title, date, tags, and Markdown-rendered body (code blocks, images, lists, and other common Markdown syntax all render correctly).
+- [ ] Math renders correctly: `$...$` inline and `$$...$$` block (including numbered `$$ x $$ (1)`) appear as KaTeX HTML in the post page with no JS required; `docs/katex/katex.min.css` and `docs/katex/fonts/` are present; the homepage excerpt shows `[math]` instead of raw formula markup.
+- [ ] Mermaid renders correctly: a ` ```mermaid ` fenced block appears as `<div class="mermaid">` in the post page and is drawn client-side (dark/light theme follows `prefers-color-scheme`); `docs/js/mermaid.min.js` is present; the homepage excerpt shows `[diagram]`.
 - [ ] All static resource paths (css/js/posts.json) on every page load correctly under both empty and non-empty `baseUrl` configurations (at minimum verify `baseUrl: ""`; for non-empty `baseUrl`, manually check that the code logic is self-consistent).
 - [ ] The `docs/` directory is a build artifact, already in `.gitignore`, and not committed to the source repo. It is pushed to a separate GitHub Pages repo via the `deploy` command.
 - [ ] `swp-cli gist-sync` (or `node scripts/cli.js gist-sync`) can fetch all public gists of `githubUser` that contain Markdown files, generate posts with `gist_id` front-matter into `source/_posts/`, and rebuild; when a gist is deleted, the corresponding local post is cleaned up.
@@ -1632,6 +1745,5 @@ swp-cli deploy -m "Wrote a new post"
 
 - `<!-- more -->` manual excerpt cutoff within posts.
 - Previous/next post navigation.
-- Dark mode toggle.
+- Dark mode toggle (automatic dark mode via `prefers-color-scheme` is implemented; a manual toggle is not).
 - Category-based grouped view (currently only tags are implemented).
-- Markdown math formulas / mermaid diagram support.
