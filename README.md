@@ -21,30 +21,32 @@
 npm install
 ```
 
+> 所有命令统一通过 `npx` 运行，无需全局安装。
+
 ## 使用
 
 ### 创建新文章
 
 ```bash
-swp-cli new my-first-post --title "我的第一篇文章"
+npx swp-cli new my-first-post --title "我的第一篇文章"
 ```
 
 ### 渲染单篇文章并加入站点
 
 ```bash
-swp-cli render source/_posts/2026-07-04-my-first-post.md
+npx swp-cli render source/_posts/2026-07-04-my-first-post.md
 ```
 
 ### 全量重新构建整个站点
 
 ```bash
-swp-cli build
+npx swp-cli build
 ```
 
 ### 本地预览
 
 ```bash
-swp-cli serve
+npx swp-cli serve
 ```
 
 打开浏览器访问 http://localhost:8080
@@ -66,13 +68,13 @@ swp-cli serve
 然后一条命令部署：
 
 ```bash
-swp-cli deploy
+npx swp-cli deploy
 ```
 
 也可以自定义 commit message：
 
 ```bash
-swp-cli deploy -m "写了一篇新文章"
+npx swp-cli deploy -m "写了一篇新文章"
 ```
 
 命令执行流程：
@@ -88,9 +90,9 @@ swp-cli deploy -m "写了一篇新文章"
 把 GitHub 账号的 public gist 同步成博客文章，合并到现有文章里：
 
 ```bash
-swp-cli gist-sync
+npx swp-cli gist-sync
 # 或临时指定用户名（默认读 blog.config.json 的 githubUser）：
-swp-cli gist-sync --user iintothewind
+npx swp-cli gist-sync --user iintothewind
 ```
 
 行为说明：
