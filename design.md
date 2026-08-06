@@ -8,16 +8,19 @@
 
 Build a personal static blog generator in Node.js as a replacement for Hexo, with output deployed to GitHub Pages.
 
-**Feature scope (only these three, no more):**
+**Feature scope:**
 1. Fixed layout: left sidebar (post list + navigation), hidden by default, slides out on button click; right side displays content. The sidebar supports two viewing modes: "by publish date (newest first)" and "by tag grouping".
 2. Posts use Hexo-style Markdown (YAML front-matter + body).
 3. CLI tool: can render a single `.md` file directly to `.html` and "publish" it (i.e. update the output directory + update the post index), without needing a full site rebuild.
+4. Post header/footer injection: global HTML fragments under `source/_includes/` wrap the post body at build time (post pages only); per-post `header` / `footer` front-matter flags opt out (default on).
+5. Agent-readable attribution (static GitHub Pages): per-post Markdown mirrors (`docs/posts/<slug>.md`), site-wide `docs/llms.txt`, and `<link rel="alternate" type="text/markdown">` on post pages; no edge proxy or User-Agent routing.
 
 **Explicitly out of scope (avoid over-engineering):**
 - No pagination (a personal blog doesn't have many posts; the sidebar shows the full list directly).
 - No comment system, no RSS, no search.
 - No live-reload (hot reload); manually refresh the browser for local preview.
 - No Chinese-to-pinyin slug generation; the filename slug is manually specified by the user on the command line (pure ASCII).
+- No User-Agent / TLS-based content negotiation (unlike TIME's live edge routing; static build-time mirrors only).
 
 ---
 
@@ -69,7 +72,11 @@ swan-post/
 ├── package.json
 ├── blog.config.json              # Site configuration
 ├── source/
-│   └── _posts/                   # Stores all Markdown posts
+│   ├── _posts/                   # Stores all Markdown posts
+│   └── _includes/                # Post includes (optional)
+│       ├── post-header.html
+│       ├── post-footer.html
+│       └── agent-attribution.md
 ├── templates/                    # HTML templates (placeholder substitution, see Section 5)
 │   ├── layout.html
 │   ├── post.html
@@ -94,8 +101,11 @@ swan-post/
 ├── docs/                         # [Output directory] Build artifacts, pushed to a separate Pages repo by deploy; do not edit manually
 │   ├── index.html                # Homepage (recent N posts, server-rendered)
 │   ├── posts.json                # Post index (fetched at runtime by frontend sidebar)
+│   ├── llms.txt                  # Agent-readable site index (when agentMarkdown is on)
 │   ├── katex/                    # KaTeX css + fonts (copied from node_modules/katex/dist, see Section 7.1)
-│   └── posts/<slug>.html         # Post pages (js/ also contains mermaid.min.js for client-side diagrams)
+│   └── posts/
+│       ├── <slug>.html           # Post pages (js/ also contains mermaid.min.js for client-side diagrams)
+│       └── <slug>.md             # Agent-readable Markdown mirror (when agentMarkdown is on)
 └── README.md
 ```
 
@@ -147,16 +157,25 @@ docs/
   "baseUrl": "",
   "recentPostsCount": 10,
   "sidebarPostCount": 200,
+  "postHeader": "source/_includes/post-header.html",
+  "postFooter": "source/_includes/post-footer.html",
   "githubUser": "username",
-  "deployTarget": "git@github.com:username/username.github.io.git"
+  "deployTarget": "git@github.com:username/username.github.io.git",
+  "siteUrl": "https://username.github.io",
+  "agentMarkdown": true,
+  "agentAttribution": "source/_includes/agent-attribution.md"
 }
 ```
 
 - `baseUrl`: If the blog is deployed at `https://username.github.io/` (root domain), leave `baseUrl` as an empty string `""`. If deployed at `https://username.github.io/reponame/` (project page), set `baseUrl` to `"/reponame"`.
 - `recentPostsCount`: The number of "recent posts" displayed in the homepage content area, default `10`. Changing this number does not require code changes; the build script reads the config and falls back to `10` if the field is missing.
 - `sidebarPostCount`: The maximum number of posts shown in the sidebar "Timeline" tab, default `200`. Only affects the frontend display count, not the `posts.json` content.
+- `postHeader` / `postFooter`: Optional paths (relative to project root) to HTML fragments injected above/below the post body on **post pages only**. Defaults to `source/_includes/post-header.html` and `source/_includes/post-footer.html` when omitted. Missing files log a warning and render as empty strings; the build does not fail.
 - `githubUser`: GitHub username, used by the `gist-sync` command to fetch public gists (can also be overridden via the `--user` CLI flag).
 - `deployTarget`: SSH URL of the GitHub Pages repository. The deploy command pushes build artifacts to this repo. The source repo (`swan-post`) and Pages repo are separate.
+- `siteUrl`: Canonical public site URL (no trailing slash). Used for `llms.txt`, `rel="alternate"` links, and absolute URLs inside agent mirrors. Falls back to `https://<githubUser>.github.io` when omitted.
+- `agentMarkdown`: When `true` (default), each build/render writes `docs/posts/<slug>.md`, regenerates `docs/llms.txt`, and adds `<link rel="alternate" type="text/markdown">` in post page `<head>`. Set to `false` to disable all three.
+- `agentAttribution`: Path (relative to project root) to the Markdown template prepended to each mirror file. Defaults to `source/_includes/agent-attribution.md`. Missing file logs a warning and uses an empty header.
 - When referencing static resources in all templates, the `{{BASE_URL}}` prefix must be concatenated (see Section 5), so that both root domain and sub-path deployments work correctly. **Do not hardcode absolute paths or relative `../` paths.**
 
 ---
@@ -179,6 +198,8 @@ title: Post Title
 date: 2026-07-04 10:00:00
 tags: [tag1, tag2]
 categories: [category1]
+header: true   # optional; default true — set false to skip post header include
+footer: true   # optional; default true — set false to skip post footer include
 ---
 
 Body content, standard Markdown syntax.
@@ -189,6 +210,7 @@ Field descriptions:
 - `date` (required, format `YYYY-MM-DD HH:mm:ss`): Publish time, used for sorting. Note: js-yaml parses dates without timezone as **UTC** (YAML 1.1 spec), so build results are independent of the build machine's timezone — in `posts.json`, `date` stores the UTC ISO string (for sorting), and `formattedDate` takes the UTC `YYYY-MM-DD` for display, which is always equal to the date manually written in the front-matter.
 - `tags` (optional, string array): Default `[]`.
 - `categories` (optional, string array): Default `[]`. In the current version, parse and store them, but do not use categories in the UI yet (only tags are used for grouped display).
+- `header` / `footer` (optional, boolean): Default `true`. Set to `false` to opt out of global post header/footer HTML fragments on that post. Only boolean `false` opts out.
 
 Always use the `gray-matter` library to parse this front-matter. **Do not write your own YAML parser.**
 
@@ -206,6 +228,74 @@ Beyond standard Markdown, the renderer (Section 7.1) supports:
 - A fenced block whose language is exactly `mermaid` is rendered to `<div class="mermaid">…</div>` (content HTML-escaped). `layout.html` loads `mermaid.min.js` only when `.mermaid` nodes exist, then draws them client-side. All other code fences keep the Prism path.
 
 Both are masked in the post excerpt (see Section 7.1 `parseMarkdownFile`): inline and block math → `[math]`, diagrams → `[diagram]`.
+
+### 4.1 Post header/footer includes
+
+Global HTML fragments live under `source/_includes/`. Paths are configured in `blog.config.json` (`postHeader`, `postFooter`). Both `scripts/build.js` and `scripts/render.js` call `buildPostIncludes(config, post)` and pass the rendered strings into `templates/post.html` as `{{POST_HEADER_HTML}}` and `{{POST_FOOTER_HTML}}`.
+
+**Starter files** (ship with the repo; user-editable):
+
+`source/_includes/post-header.html` may include a visually hidden `.agent-context` block (`aria-hidden="true"` + inline `!important` styles) so author/copyright/citation instructions stay in the HTML/DOM for scrapers but are hidden from sighted readers. CSS in `assets/css/style.css` reinforces hiding.
+
+`source/_includes/post-footer.html`:
+```html
+<footer class="post-footer">
+  <p>&copy; {{SITE_AUTHOR}} · <a href="{{BASE_URL}}/index.html">{{SITE_TITLE}}</a></p>
+</footer>
+```
+
+Fragments may reference external assets, e.g. `<script src="{{BASE_URL}}/js/your-file.js"></script>`. Inline `<script>` is allowed (trusted local files, same model as templates).
+
+Append minimal styles to `assets/css/style.css` (do not replace existing rules):
+```css
+.post-body .agent-context {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+}
+.post-header,
+.post-footer {
+  margin: 1.5rem 0;
+  padding: 1rem 0;
+  border-color: var(--border, #ddd);
+}
+.post-header { border-bottom: 1px solid; }
+.post-footer { border-top: 1px solid; font-size: 0.9rem; color: var(--muted, #666); }
+```
+
+**Out of scope for this version:** per-post custom fragment paths (`headerFile` / `footerFile` front-matter). Only global fragments + per-post boolean opt-out.
+
+### 4.2 Agent-readable Markdown mirrors (static attribution)
+
+On pure static GitHub Pages (no edge proxy), swan-post emits agent-readable content at **build time**:
+
+| Output | Path | Purpose |
+|--------|------|---------|
+| Per-post mirror | `docs/posts/<slug>.md` | FAQ-style attribution header + original Markdown body + copyright footer |
+| Site index | `docs/llms.txt` | Site description + list of Markdown mirror URLs |
+| HTML discovery | `<link rel="alternate" type="text/markdown" href="...">` in post `<head>` | Points agents to the `.md` mirror |
+
+Controlled by `agentMarkdown` (default `true`). Set `false` to disable all three.
+
+`source/_includes/agent-attribution.md` is the mirror header template. Placeholders: `{{SITE_AUTHOR}}`, `{{SITE_URL}}`, `{{GITHUB_USER}}`, `{{GITHUB_URL}}`, `{{CANONICAL_URL}}`, `{{POST_TITLE}}`, `{{POST_DATE}}`, `{{POST_SLUG}}`, `{{POST_TAGS}}`.
+
+`scripts/utils.js` provides: `getSiteUrl`, `getPostCanonicalUrl`, `getPostMarkdownUrl`, `buildAgentMarkdown`, `writeAgentMarkdownFile`, `renderLlmsTxt`, `writeLlmsTxt`, `renderPostAlternateLink`.
+
+`parseMarkdownFile` must also return raw `content` (Markdown body string) for mirror generation.
+
+> **Limitation:** Unlike TIME's live edge routing, static GitHub Pages cannot serve different HTML vs. Markdown per User-Agent at request time. Markdown mirrors and `llms.txt` are the reliable agent path; the hidden `.agent-context` HTML header helps raw HTML crawlers but may be stripped by readability extractors.
+
 
 ---
 
@@ -237,6 +327,7 @@ All template files use `{{KEY}}` placeholders. The build script performs simple 
 <link rel="stylesheet" href="{{BASE_URL}}/prism/prism-monokai.min.css">
 <link rel="stylesheet" href="{{BASE_URL}}/katex/katex.min.css">
 <link rel="stylesheet" href="{{BASE_URL}}/css/style.css">
+{{POST_ALTERNATE_MD}}
 </head>
 <body>
 <button id="sidebar-toggle" aria-label="Open menu">☰</button>
@@ -310,7 +401,7 @@ All template files use `{{KEY}}` placeholders. The build script performs simple 
 - `katex.min.css` is referenced so server-rendered formula HTML picks up KaTeX styles and fonts (fonts resolve via relative paths from `docs/katex/`).
 - Mermaid is loaded on demand: the inline initializer bails out when there are no `.mermaid` nodes; otherwise it injects `docs/js/mermaid.min.js`, caches each node's source in `data-src`, and calls `mermaid.run()`. On `prefers-color-scheme` changes it restores `textContent` from `data-src` before re-running (mermaid replaces innerHTML with SVG, so clearing `data-processed` alone is not enough). `startOnLoad: false` because rendering is driven manually.
 
-> Placeholder list: `PAGE_TITLE` (page title), `SITE_TITLE` (site name), `BASE_URL` (deployment root path; all static resource/link references must prepend this prefix), `SIDEBAR_POST_COUNT` (max posts shown in the sidebar timeline, from `blog.config.json`'s `sidebarPostCount`, default 200), `CONTENT` (content area fragment: homepage or post page).
+> Placeholder list: `PAGE_TITLE` (page title), `SITE_TITLE` (site name), `BASE_URL` (deployment root path; all static resource/link references must prepend this prefix), `SIDEBAR_POST_COUNT` (max posts shown in the sidebar timeline, from `blog.config.json`'s `sidebarPostCount`, default 200), `POST_ALTERNATE_MD` (optional `<link rel="alternate" type="text/markdown">` on post pages; empty string on homepage), `CONTENT` (content area fragment: homepage or post page).
 
 `templates/index.html` (homepage content area fragment; will be inserted into the layout's `{{CONTENT}}` during build. `{{RECENT_POSTS_HTML}}` is generated by the build script as a complete HTML block on the server side and then substituted in — **not** rendered asynchronously by frontend JS — so the post list is visible immediately when the homepage opens, without waiting for `posts.json` to be fetched):
 
@@ -334,9 +425,11 @@ All template files use `{{KEY}}` placeholders. The build script performs simple 
 <span class="post-date">{{POST_DATE_FORMATTED}}</span>
 <span class="post-tags">{{POST_TAGS_HTML}}</span>
 </div>
+{{POST_HEADER_HTML}}
 <div class="post-body">
 {{POST_CONTENT_HTML}}
 </div>
+{{POST_FOOTER_HTML}}
 </article>
 ```
 
@@ -899,7 +992,7 @@ copyIfNeeded(path.join(process.cwd(), "node_modules", "mermaid", "dist", "mermai
 }
 
 // Parse a single markdown file, returning:
-// { title, date, formattedDate, tags, categories, slug, contentHtml, excerpt }
+// { title, date, formattedDate, tags, categories, slug, content, contentHtml, excerpt, showHeader, showFooter }
 // slug is derived from the filename by stripping the .md extension
 function parseMarkdownFile(filePath) {
 const raw = fs.readFileSync(filePath, "utf-8");
@@ -932,9 +1025,132 @@ formattedDate,
 tags: Array.isArray(data.tags) ? data.tags : (typeof data.tags === "string" && data.tags.trim() ? [data.tags] : []),
 categories: Array.isArray(data.categories) ? data.categories : (typeof data.categories === "string" && data.categories.trim() ? [data.categories] : []),
 slug,
+content,
 contentHtml,
-excerpt
+excerpt,
+showHeader: data.header !== false,
+showFooter: data.footer !== false
 };
+}
+
+function resolvePostIncludeFlags(frontMatter) {
+return {
+showHeader: frontMatter.header !== false,
+showFooter: frontMatter.footer !== false
+};
+}
+
+function loadPostIncludeFile(relativePath) {
+const absPath = path.join(process.cwd(), relativePath);
+if (!fs.existsSync(absPath)) {
+console.warn(`Post include not found: ${relativePath}`);
+return "";
+}
+const content = fs.readFileSync(absPath, "utf-8");
+return content || "";
+}
+
+function buildPostIncludes(config, post) {
+const headerPath = config.postHeader || "source/_includes/post-header.html";
+const footerPath = config.postFooter || "source/_includes/post-footer.html";
+const templateVars = {
+SITE_TITLE: config.title || "",
+SITE_AUTHOR: config.author || "",
+SITE_DESCRIPTION: config.description || "",
+BASE_URL: config.baseUrl || "",
+POST_TITLE: post.title,
+POST_DATE: post.formattedDate,
+POST_SLUG: post.slug,
+POST_TAGS_HTML: renderTagsHtml(post.tags)
+};
+const headerHtml = post.showHeader ? renderTemplate(loadPostIncludeFile(headerPath), templateVars) : "";
+const footerHtml = post.showFooter ? renderTemplate(loadPostIncludeFile(footerPath), templateVars) : "";
+return { headerHtml, footerHtml };
+}
+
+function getSiteUrl(config) {
+if (config.siteUrl) return String(config.siteUrl).replace(/\/$/, "");
+if (config.githubUser) return "https://" + config.githubUser + ".github.io";
+return "";
+}
+
+function getPostCanonicalUrl(config, slug) {
+const site = getSiteUrl(config);
+const base = String(config.baseUrl || "").replace(/\/$/, "");
+return site + base + "/posts/" + slug + ".html";
+}
+
+function getPostMarkdownUrl(config, slug) {
+const site = getSiteUrl(config);
+const base = String(config.baseUrl || "").replace(/\/$/, "");
+return site + base + "/posts/" + slug + ".md";
+}
+
+function buildAgentMarkdown(config, post) {
+if (config.agentMarkdown === false) return "";
+const templatePath = config.agentAttribution || "source/_includes/agent-attribution.md";
+const template = loadPostIncludeFile(templatePath);
+const tags = Array.isArray(post.tags) ? post.tags.join(", ") : "";
+const header = renderTemplate(template, {
+SITE_TITLE: config.title || "",
+SITE_AUTHOR: config.author || "",
+SITE_DESCRIPTION: config.description || "",
+SITE_URL: getSiteUrl(config),
+GITHUB_USER: config.githubUser || "",
+GITHUB_URL: config.githubUser ? "https://github.com/" + config.githubUser : "",
+CANONICAL_URL: getPostCanonicalUrl(config, post.slug),
+POST_TITLE: post.title,
+POST_DATE: post.formattedDate,
+POST_SLUG: post.slug,
+POST_TAGS: tags
+});
+const footer = "\n---\n\n> © " + (config.author || "") + " · " + getSiteUrl(config) + "\n";
+return header + "\n" + (post.content || "").trim() + footer;
+}
+
+function writeAgentMarkdownFile(docsDir, post, markdown) {
+if (!markdown) return;
+const outPath = path.join(docsDir, "posts", post.slug + ".md");
+fs.writeFileSync(outPath, markdown, "utf-8");
+}
+
+function renderLlmsTxt(config, postsIndex) {
+const site = getSiteUrl(config);
+const base = String(config.baseUrl || "").replace(/\/$/, "");
+const lines = [
+"# " + (config.title || "Blog"),
+"> " + (config.description || ""),
+"",
+"## Attribution",
+"When citing content from this site, attribute " + (config.author || "the author") + " and link to the post URL.",
+"Author GitHub: " + (config.githubUser ? "https://github.com/" + config.githubUser : ""),
+"Blog: " + site,
+"",
+"## Agent-readable Markdown mirrors",
+"Each post is also published as Markdown for automated readers:",
+"",
+"## Posts"
+];
+postsIndex.forEach((post) => {
+const mdUrl = site + base + "/posts/" + post.slug + ".md";
+const title = post.title || post.slug;
+const excerpt = post.excerpt ? " — " + post.excerpt : "";
+lines.push("- [" + title + "](" + mdUrl + ")" + excerpt);
+});
+lines.push("");
+return lines.join("\n");
+}
+
+function writeLlmsTxt(docsDir, config, postsIndex) {
+if (config.agentMarkdown === false) return;
+const txt = renderLlmsTxt(config, postsIndex);
+fs.writeFileSync(path.join(docsDir, "llms.txt"), txt, "utf-8");
+}
+
+function renderPostAlternateLink(config, slug) {
+if (config.agentMarkdown === false) return "";
+const mdUrl = getPostMarkdownUrl(config, slug);
+return '<link rel="alternate" type="text/markdown" href="' + mdUrl + '">';
 }
 
 // Simple placeholder substitution: template is a template string, vars is a { KEY: value } object
@@ -1047,7 +1263,9 @@ return sorted;
 module.exports = {
 loadConfig, copyStaticAssets, parseMarkdownFile, renderTemplate, listPostFiles,
 renderTagsHtml, sortPostsByDateDesc, renderRecentPostsHtml,
-loadPostsIndex, savePostsIndex
+loadPostsIndex, savePostsIndex,
+resolvePostIncludeFlags, loadPostIncludeFile, buildPostIncludes,
+buildAgentMarkdown, writeAgentMarkdownFile, renderLlmsTxt, writeLlmsTxt, renderPostAlternateLink
 };
 ```
 
@@ -1060,7 +1278,8 @@ const fs = require("fs-extra");
 const path = require("path");
 const {
 loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
-listPostFiles, renderTagsHtml, renderRecentPostsHtml, savePostsIndex
+listPostFiles, renderTagsHtml, renderRecentPostsHtml, savePostsIndex, buildPostIncludes,
+buildAgentMarkdown, writeAgentMarkdownFile, writeLlmsTxt, renderPostAlternateLink
 } = require("./utils");
 
 // Generate the homepage docs/index.html.
@@ -1086,6 +1305,7 @@ const homeHtml = renderTemplate(layoutTpl, {
   SITE_TITLE: config.title,
   BASE_URL: config.baseUrl,
   SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
+  POST_ALTERNATE_MD: "",
   CONTENT: homeContent
 });
 fs.writeFileSync(path.join(docsDir, "index.html"), homeHtml, "utf-8");
@@ -1112,21 +1332,27 @@ const posts = files.map(parseMarkdownFile);
 
 // 5. Generate an HTML page for each post
 posts.forEach((post) => {
+const { headerHtml, footerHtml } = buildPostIncludes(config, post);
 const postHtml = renderTemplate(postTpl, {
 POST_TITLE: post.title,
 POST_DATE_FORMATTED: post.formattedDate,
 POST_TAGS_HTML: renderTagsHtml(post.tags),
+POST_HEADER_HTML: headerHtml,
 POST_CONTENT_HTML: post.contentHtml,
+POST_FOOTER_HTML: footerHtml,
 BASE_URL: config.baseUrl
 });
+const agentMd = buildAgentMarkdown(config, post);
 const fullHtml = renderTemplate(layoutTpl, {
   PAGE_TITLE: post.title,
   SITE_TITLE: config.title,
   BASE_URL: config.baseUrl,
   SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
+  POST_ALTERNATE_MD: renderPostAlternateLink(config, post.slug),
   CONTENT: postHtml
 });
 fs.writeFileSync(path.join(docsDir, "posts", post.slug + ".html"), fullHtml, "utf-8");
+writeAgentMarkdownFile(docsDir, post, agentMd);
 });
 
 // 6. Generate posts.json index (note the url field format: posts/<slug>.html)
@@ -1146,6 +1372,9 @@ const sortedIndex = savePostsIndex(postsIndex);
 // 7. Use the sorted index to generate the homepage (homepage content area shows the most recent N posts, N from blog.config.json's recentPostsCount)
 renderHomepage(config, sortedIndex);
 
+// 8. Agent-readable Markdown mirrors + llms.txt (static GitHub Pages; no UA routing)
+writeLlmsTxt(docsDir, config, sortedIndex);
+
 console.log(`Build complete, ${posts.length} posts, output to docs/`);
 }
 
@@ -1161,7 +1390,8 @@ const fs = require("fs-extra");
 const path = require("path");
 const {
 loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
-renderTagsHtml, loadPostsIndex, savePostsIndex
+renderTagsHtml, loadPostsIndex, savePostsIndex, buildPostIncludes,
+buildAgentMarkdown, writeAgentMarkdownFile, writeLlmsTxt, renderPostAlternateLink
 } = require("./utils");
 const { renderHomepage } = require("./build");
 
@@ -1183,22 +1413,28 @@ const post = parseMarkdownFile(absPath);
 const postTpl = fs.readFileSync(path.join(process.cwd(), "templates", "post.html"), "utf-8");
 const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
 
+const { headerHtml, footerHtml } = buildPostIncludes(config, post);
 const postHtml = renderTemplate(postTpl, {
 POST_TITLE: post.title,
 POST_DATE_FORMATTED: post.formattedDate,
 POST_TAGS_HTML: renderTagsHtml(post.tags),
+POST_HEADER_HTML: headerHtml,
 POST_CONTENT_HTML: post.contentHtml,
+POST_FOOTER_HTML: footerHtml,
 BASE_URL: config.baseUrl
 });
+const agentMd = buildAgentMarkdown(config, post);
 const fullHtml = renderTemplate(layoutTpl, {
   PAGE_TITLE: post.title,
   SITE_TITLE: config.title,
   BASE_URL: config.baseUrl,
   SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
+  POST_ALTERNATE_MD: renderPostAlternateLink(config, post.slug),
   CONTENT: postHtml
 });
 const outputPath = path.join(docsDir, "posts", post.slug + ".html");
 fs.writeFileSync(outputPath, fullHtml, "utf-8");
+writeAgentMarkdownFile(docsDir, post, agentMd);
 
 // 4. Update docs/posts.json: if this slug already exists, replace it; otherwise add it, then re-sort by date and save
 const index = loadPostsIndex();
@@ -1224,6 +1460,7 @@ const sortedIndex = savePostsIndex(index);
 // within the "recent N" list; if the homepage is not regenerated, the new post will be accessible
 // from the sidebar but won't appear in the homepage content area.
 renderHomepage(config, sortedIndex);
+writeLlmsTxt(docsDir, config, sortedIndex);
 
 console.log(`Rendered: ${outputPath}`);
 console.log(`Index updated: docs/posts.json`);
@@ -1697,7 +1934,7 @@ swp-cli deploy -m "Wrote a new post"
 
 ## 10. Implementation Checklist (agent, please complete in order, self-check after each step)
 
-1. Create the complete directory structure and empty files from Section 2.
+1. Create the complete directory structure and empty files from Section 2 (including `source/_includes/post-header.html`, `post-footer.html`, and `agent-attribution.md` per Sections 4.1–4.2).
 2. Write `.gitignore` (Section 2.1 content, use as-is).
 3. Write `package.json` (Section 1 content), run `npm install`.
 4. Write `blog.config.json` (Section 3 content).
@@ -1731,6 +1968,8 @@ swp-cli deploy -m "Wrote a new post"
     - Deliberately set `deployTarget` to a non-existent repo URL and run once, verify the command catches the error and prints a readable message instead of throwing an unhandled exception that crashes the process without any output.
 22. After all verifications pass, enable GitHub Pages in the Pages repo's (`<user>.github.io`) Settings (Source: `main` branch root; only needs to be done once; every subsequent `deploy` will auto-update).
 23. Test gist-sync: after configuring `githubUser` in `blog.config.json`, run `node scripts/cli.js gist-sync`, verify that posts with `gist_id` front-matter are generated under `source/_posts/` and `docs/` is rebuilt; run again and verify it outputs "Updated N posts" instead of adding duplicates; delete a gist on GitHub and run again, verify the corresponding local post is deleted.
+24. Test post header/footer: run `node scripts/cli.js build`, verify post HTML contains `.post-footer` below the body and homepage has no footer fragment; add `header: false` / `footer: false` to one post and rebuild — that post omits fragments while others keep them; confirm `posts.json` excerpts exclude footer text; run incremental `render` on a post and confirm same behavior; temporarily rename `post-header.html` and rebuild — expect a console warning, successful build, empty header.
+25. Test agent Markdown: run `node scripts/cli.js build`, verify each post has `docs/posts/<slug>.md`, `docs/llms.txt` exists and lists mirrors, post HTML `<head>` contains `rel="alternate" type="text/markdown"`; set `agentMarkdown: false` and rebuild — `.md` mirrors, `llms.txt`, and alternate links are absent; run incremental `render` and confirm `llms.txt` updates.
 
 ---
 
@@ -1751,6 +1990,8 @@ swp-cli deploy -m "Wrote a new post"
 - [ ] All static resource paths (css/js/posts.json) on every page load correctly under both empty and non-empty `baseUrl` configurations (at minimum verify `baseUrl: ""`; for non-empty `baseUrl`, manually check that the code logic is self-consistent).
 - [ ] The `docs/` directory is a build artifact, already in `.gitignore`, and not committed to the source repo. It is pushed to a separate GitHub Pages repo via the `deploy` command.
 - [ ] `swp-cli gist-sync` (or `node scripts/cli.js gist-sync`) can fetch all public gists of `githubUser` that contain Markdown files, generate posts with `gist_id` front-matter into `source/_posts/`, and rebuild; when a gist is deleted, the corresponding local post is cleaned up.
+- [ ] Post pages inject global header/footer HTML from `source/_includes/` (configurable via `postHeader` / `postFooter`); per-post `header: false` / `footer: false` opts out; excerpts exclude fragment text; missing include files warn and continue.
+- [ ] When `agentMarkdown` is enabled: each post outputs `docs/posts/<slug>.md`, `docs/llms.txt` is regenerated on build/render, and post pages include `<link rel="alternate" type="text/markdown">`; setting `agentMarkdown: false` disables all three.
 
 ---
 

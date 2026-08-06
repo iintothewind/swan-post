@@ -2,7 +2,8 @@ const fs = require("fs-extra");
 const path = require("path");
 const {
 loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
-listPostFiles, renderTagsHtml, renderRecentPostsHtml, savePostsIndex
+listPostFiles, renderTagsHtml, renderRecentPostsHtml, savePostsIndex, buildPostIncludes,
+buildAgentMarkdown, writeAgentMarkdownFile, writeLlmsTxt, renderPostAlternateLink
 } = require("./utils");
 
 // Generate the homepage docs/index.html.
@@ -28,6 +29,7 @@ const homeHtml = renderTemplate(layoutTpl, {
   SITE_TITLE: config.title,
   BASE_URL: config.baseUrl,
   SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
+  POST_ALTERNATE_MD: "",
   CONTENT: homeContent
 });
 fs.writeFileSync(path.join(docsDir, "index.html"), homeHtml, "utf-8");
@@ -54,21 +56,27 @@ const posts = files.map(parseMarkdownFile);
 
 // 5. Generate an HTML page for each post
 posts.forEach((post) => {
+const { headerHtml, footerHtml } = buildPostIncludes(config, post);
 const postHtml = renderTemplate(postTpl, {
 POST_TITLE: post.title,
 POST_DATE_FORMATTED: post.formattedDate,
 POST_TAGS_HTML: renderTagsHtml(post.tags),
+POST_HEADER_HTML: headerHtml,
 POST_CONTENT_HTML: post.contentHtml,
+POST_FOOTER_HTML: footerHtml,
 BASE_URL: config.baseUrl
 });
+const agentMd = buildAgentMarkdown(config, post);
 const fullHtml = renderTemplate(layoutTpl, {
   PAGE_TITLE: post.title,
   SITE_TITLE: config.title,
   BASE_URL: config.baseUrl,
   SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
+  POST_ALTERNATE_MD: renderPostAlternateLink(config, post.slug),
   CONTENT: postHtml
 });
 fs.writeFileSync(path.join(docsDir, "posts", post.slug + ".html"), fullHtml, "utf-8");
+writeAgentMarkdownFile(docsDir, post, agentMd);
 });
 
 // 6. Generate posts.json index (note the url field format: posts/<slug>.html)
@@ -87,6 +95,9 @@ const sortedIndex = savePostsIndex(postsIndex);
 
 // 7. Use the sorted index to generate the homepage (the homepage body shows the most recent N posts, where N comes from blog.config.json's recentPostsCount)
 renderHomepage(config, sortedIndex);
+
+// 8. Agent-readable Markdown mirrors + llms.txt (static GitHub Pages; no UA routing)
+writeLlmsTxt(docsDir, config, sortedIndex);
 
 console.log(`Build complete, ${posts.length} posts, output to docs/`);
 }

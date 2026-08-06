@@ -464,6 +464,43 @@ body.sidebar-open #overlay-mask {
 .post-body strong { font-weight: 700; }
 .post-body input[type="checkbox"] { margin-right: 8px; }
 
+
+/* Agent-only provenance: stays in HTML/DOM for scrapers; visually hidden for humans */
+.post-body .agent-context {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+}
+
+.post-header,
+.post-footer {
+  margin: 1.5rem 0;
+  padding: 1rem 0;
+  border-color: var(--border, #ddd);
+}
+.post-header { border-bottom: 1px solid; }
+.post-footer {
+  border-top: 1px solid;
+  font-size: 0.9rem;
+  color: var(--muted, #666);
+}
+.post-footer-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
 /* ---------- Responsive: narrow screen ---------- */
 @media (max-width: 640px) {
   #content {

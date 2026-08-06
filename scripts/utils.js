@@ -56,7 +56,7 @@ copyIfNeeded(path.join(process.cwd(), "node_modules", "mermaid", "dist", "mermai
 }
 
 // Parse a single markdown file, returns:
-// { title, date, formattedDate, tags, categories, slug, contentHtml, excerpt }
+// { title, date, formattedDate, tags, categories, slug, content, contentHtml, excerpt, showHeader, showFooter }
 // slug is derived from the filename by stripping the .md extension
 function parseMarkdownFile(filePath) {
 const raw = fs.readFileSync(filePath, "utf-8");
@@ -88,9 +88,139 @@ formattedDate,
 tags: Array.isArray(data.tags) ? data.tags : (typeof data.tags === "string" && data.tags.trim() ? [data.tags] : []),
 categories: Array.isArray(data.categories) ? data.categories : (typeof data.categories === "string" && data.categories.trim() ? [data.categories] : []),
 slug,
+content,
 contentHtml,
-excerpt
+excerpt,
+showHeader: data.header !== false,
+showFooter: data.footer !== false
 };
+}
+
+
+
+function getSiteUrl(config) {
+if (config.siteUrl) return String(config.siteUrl).replace(/\/$/, "");
+if (config.githubUser) return "https://" + config.githubUser + ".github.io";
+return "";
+}
+
+function getPostCanonicalUrl(config, slug) {
+const site = getSiteUrl(config);
+const base = String(config.baseUrl || "").replace(/\/$/, "");
+return site + base + "/posts/" + slug + ".html";
+}
+
+function getPostMarkdownUrl(config, slug) {
+const site = getSiteUrl(config);
+const base = String(config.baseUrl || "").replace(/\/$/, "");
+return site + base + "/posts/" + slug + ".md";
+}
+
+function buildAgentMarkdown(config, post) {
+if (config.agentMarkdown === false) return "";
+const templatePath = config.agentAttribution || "source/_includes/agent-attribution.md";
+const template = loadPostIncludeFile(templatePath);
+const tags = Array.isArray(post.tags) ? post.tags.join(", ") : "";
+const header = renderTemplate(template, {
+SITE_TITLE: config.title || "",
+SITE_AUTHOR: config.author || "",
+SITE_DESCRIPTION: config.description || "",
+SITE_URL: getSiteUrl(config),
+GITHUB_USER: config.githubUser || "",
+GITHUB_URL: config.githubUser ? "https://github.com/" + config.githubUser : "",
+CANONICAL_URL: getPostCanonicalUrl(config, post.slug),
+POST_TITLE: post.title,
+POST_DATE: post.formattedDate,
+POST_SLUG: post.slug,
+POST_TAGS: tags
+});
+const footer = "\n---\n\n> © " + (config.author || "") + " · " + getSiteUrl(config) + "\n";
+return header + "\n" + (post.content || "").trim() + footer;
+}
+
+function writeAgentMarkdownFile(docsDir, post, markdown) {
+if (!markdown) return;
+const outPath = path.join(docsDir, "posts", post.slug + ".md");
+fs.writeFileSync(outPath, markdown, "utf-8");
+}
+
+function renderLlmsTxt(config, postsIndex) {
+const site = getSiteUrl(config);
+const base = String(config.baseUrl || "").replace(/\/$/, "");
+const lines = [
+"# " + (config.title || "Blog"),
+"> " + (config.description || ""),
+"",
+"## Attribution",
+"When citing content from this site, attribute " + (config.author || "the author") + " and link to the post URL.",
+"Author GitHub: " + (config.githubUser ? "https://github.com/" + config.githubUser : ""),
+"Blog: " + site,
+"",
+"## Agent-readable Markdown mirrors",
+"Each post is also published as Markdown for automated readers:",
+"",
+"## Posts"
+];
+postsIndex.forEach((post) => {
+const mdUrl = site + base + "/posts/" + post.slug + ".md";
+const title = post.title || post.slug;
+const excerpt = post.excerpt ? " — " + post.excerpt : "";
+lines.push("- [" + title + "](" + mdUrl + ")" + excerpt);
+});
+lines.push("");
+return lines.join("\n");
+}
+
+function writeLlmsTxt(docsDir, config, postsIndex) {
+if (config.agentMarkdown === false) return;
+const txt = renderLlmsTxt(config, postsIndex);
+fs.writeFileSync(path.join(docsDir, "llms.txt"), txt, "utf-8");
+}
+
+function renderPostAlternateLink(config, slug) {
+if (config.agentMarkdown === false) return "";
+const mdUrl = getPostMarkdownUrl(config, slug);
+return '<link rel="alternate" type="text/markdown" href="' + mdUrl + '">';
+}
+
+
+function resolvePostIncludeFlags(frontMatter) {
+return {
+showHeader: frontMatter.header !== false,
+showFooter: frontMatter.footer !== false
+};
+}
+
+function loadPostIncludeFile(relativePath) {
+const absPath = path.join(process.cwd(), relativePath);
+if (!fs.existsSync(absPath)) {
+console.warn(`Post include not found: ${relativePath}`);
+return "";
+}
+const content = fs.readFileSync(absPath, "utf-8");
+return content || "";
+}
+
+function buildPostIncludes(config, post) {
+const headerPath = config.postHeader || "source/_includes/post-header.html";
+const footerPath = config.postFooter || "source/_includes/post-footer.html";
+const templateVars = {
+SITE_TITLE: config.title || "",
+SITE_AUTHOR: config.author || "",
+SITE_DESCRIPTION: config.description || "",
+BASE_URL: config.baseUrl || "",
+POST_TITLE: post.title,
+POST_DATE: post.formattedDate,
+POST_SLUG: post.slug,
+POST_TAGS_HTML: renderTagsHtml(post.tags)
+};
+const headerHtml = post.showHeader
+? renderTemplate(loadPostIncludeFile(headerPath), templateVars)
+: "";
+const footerHtml = post.showFooter
+? renderTemplate(loadPostIncludeFile(footerPath), templateVars)
+: "";
+return { headerHtml, footerHtml };
 }
 
 // Simple placeholder substitution: template is a template string, vars is a { KEY: value } object.
@@ -203,5 +333,8 @@ return sorted;
 module.exports = {
 loadConfig, copyStaticAssets, parseMarkdownFile, renderTemplate, listPostFiles,
 renderTagsHtml, sortPostsByDateDesc, renderRecentPostsHtml,
-loadPostsIndex, savePostsIndex
+loadPostsIndex, savePostsIndex,
+resolvePostIncludeFlags, loadPostIncludeFile, buildPostIncludes,
+getSiteUrl, getPostCanonicalUrl, getPostMarkdownUrl,
+buildAgentMarkdown, writeAgentMarkdownFile, renderLlmsTxt, writeLlmsTxt, renderPostAlternateLink
 };

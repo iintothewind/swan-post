@@ -2,7 +2,8 @@ const fs = require("fs-extra");
 const path = require("path");
 const {
 loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
-renderTagsHtml, loadPostsIndex, savePostsIndex
+renderTagsHtml, loadPostsIndex, savePostsIndex, buildPostIncludes,
+buildAgentMarkdown, writeAgentMarkdownFile, writeLlmsTxt, renderPostAlternateLink
 } = require("./utils");
 const { renderHomepage } = require("./build");
 
@@ -24,22 +25,28 @@ const post = parseMarkdownFile(absPath);
 const postTpl = fs.readFileSync(path.join(process.cwd(), "templates", "post.html"), "utf-8");
 const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
 
+const { headerHtml, footerHtml } = buildPostIncludes(config, post);
 const postHtml = renderTemplate(postTpl, {
 POST_TITLE: post.title,
 POST_DATE_FORMATTED: post.formattedDate,
 POST_TAGS_HTML: renderTagsHtml(post.tags),
+POST_HEADER_HTML: headerHtml,
 POST_CONTENT_HTML: post.contentHtml,
+POST_FOOTER_HTML: footerHtml,
 BASE_URL: config.baseUrl
 });
+const agentMd = buildAgentMarkdown(config, post);
 const fullHtml = renderTemplate(layoutTpl, {
   PAGE_TITLE: post.title,
   SITE_TITLE: config.title,
   BASE_URL: config.baseUrl,
   SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
+  POST_ALTERNATE_MD: renderPostAlternateLink(config, post.slug),
   CONTENT: postHtml
 });
 const outputPath = path.join(docsDir, "posts", post.slug + ".html");
 fs.writeFileSync(outputPath, fullHtml, "utf-8");
+writeAgentMarkdownFile(docsDir, post, agentMd);
 
 // 4. Update docs/posts.json: replace if the slug already exists, otherwise append, then re-sort by date and save
 const index = loadPostsIndex();
@@ -65,6 +72,7 @@ const sortedIndex = savePostsIndex(index);
 // "recent N posts" list; without regenerating the homepage, the new post would be reachable from
 // the sidebar but invisible in the homepage body area.
 renderHomepage(config, sortedIndex);
+writeLlmsTxt(docsDir, config, sortedIndex);
 
 console.log(`Rendered: ${outputPath}`);
 console.log(`Index updated: docs/posts.json`);

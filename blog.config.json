@@ -1,10 +1,14 @@
 {
-  "title": "My Blog",
-  "author": "Ivar",
-  "description": "Personal Blog",
+  "title": "iintothewind blog",
+  "author": "Ivar.Chen",
+  "description": "blog @ https://iintothewind.github.io/",
   "baseUrl": "",
   "recentPostsCount": 10,
   "sidebarPostCount": 200,
+  "postHeader": "source/_includes/post-header.html",
+  "postFooter": "source/_includes/post-footer.html",
   "githubUser": "iintothewind",
-  "deployTarget": "git@github.com:iintothewind/iintothewind.github.io.git"
+  "deployTarget": "git@github.com:iintothewind/iintothewind.github.io.git",
+  "siteUrl": "https://iintothewind.github.io",
+  "agentMarkdown": true
 }
