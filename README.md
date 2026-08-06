@@ -19,11 +19,19 @@
 
 ## Installation
 
+With Node.js:
+
 ```bash
 npm install
 ```
 
-> All commands run via `npx` — no global installation required.
+With [Bun](https://bun.sh) (no Node.js / `npx` required):
+
+```bash
+bun install
+```
+
+> All commands below can be run via `npx swp-cli` (Node.js) or `bun scripts/cli.js` (Bun). No global installation required.
 
 ## Usage
 
@@ -31,24 +39,32 @@ npm install
 
 ```bash
 npx swp-cli new my-first-post --title "My First Article"
+# or with Bun:
+bun scripts/cli.js new my-first-post --title "My First Article"
 ```
 
 ### Render a Single Article and Add to Site
 
 ```bash
 npx swp-cli render source/_posts/2026-07-04-my-first-post.md
+# or with Bun:
+bun scripts/cli.js render source/_posts/2026-07-04-my-first-post.md
 ```
 
 ### Full Site Rebuild
 
 ```bash
 npx swp-cli build
+# or with Bun:
+bun scripts/cli.js build
 ```
 
 ### Local Preview
 
 ```bash
 npx swp-cli serve
+# or with Bun:
+bun scripts/cli.js serve
 ```
 
 Open your browser and visit http://localhost:8080
@@ -71,12 +87,16 @@ Then deploy with a single command:
 
 ```bash
 npx swp-cli deploy
+# or with Bun:
+bun scripts/cli.js deploy
 ```
 
 You can also customize the commit message:
 
 ```bash
 npx swp-cli deploy -m "Wrote a new article"
+# or with Bun:
+bun scripts/cli.js deploy -m "Wrote a new article"
 ```
 
 Command execution flow:
@@ -95,6 +115,10 @@ Sync public gists from your GitHub account as blog articles, merging into existi
 npx swp-cli gist-sync
 # Or specify a username temporarily (defaults to githubUser in blog.config.json):
 npx swp-cli gist-sync --user iintothewind
+
+# or with Bun:
+bun scripts/cli.js gist-sync
+bun scripts/cli.js gist-sync --user iintothewind
 ```
 
 Behavior notes:
@@ -159,7 +183,7 @@ graph TD
 - The theme follows the site's auto dark/light mode (`prefers-color-scheme`) and re-renders when the system theme changes.
 - Requires JavaScript to display; keep an accessible text description nearby if it matters.
 
-> After upgrading `katex` / `mermaid` (or editing files under `assets/`), run a full `npx swp-cli build`. Incremental `render` only copies missing static assets and will not refresh already-copied vendor files in `docs/`.
+> After upgrading `katex` / `mermaid` (or editing files under `assets/`), run a full `npx swp-cli build` (or `bun scripts/cli.js build`). Incremental `render` only copies missing static assets and will not refresh already-copied vendor files in `docs/`.
 
 ## Configuration
 
