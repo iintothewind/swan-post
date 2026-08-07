@@ -36,7 +36,7 @@ describe("escapeXml", () => {
   it("escapes XML special characters", () => {
     assert.equal(
       escapeXml('a&b<c>d"e\'f'),
-      "a&amp;b&lt;c&gt;d&quot;e&apos;f"
+      "a&amp;b&lt;c&gt;d&quot;e&#39;f"
     );
   });
 });

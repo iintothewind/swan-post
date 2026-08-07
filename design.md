@@ -156,8 +156,14 @@ swan-post/
 ├── scripts/
 │   ├── cli.js, utils.js, build.js, render.js
 │   ├── new-post.js, serve.js, deploy.js, gist-sync.js
-│   ├── test-attribution.sh  # Acceptance (D1–D5 + crawler)
-│   └── test-discovery.js    # Unit tests (robots/sitemap helpers)
+│   ├── lib/                  # Focused modules (P3 split)
+│   │   ├── config.js, posts-index.js, static-assets.js
+│   │   ├── post-entry.js, markdown.js, attribution.js
+│   │   ├── templates.js, agent-mirrors.js, discovery-artifacts.js
+│   ├── test-attribution.sh   # Acceptance (D1–D5 + crawler)
+│   ├── test-discovery.js     # Unit tests (robots/sitemap helpers)
+│   ├── test-markdown.js      # Unit tests (markdown rendering)
+│   └── test-templates.js     # Unit tests (template engine)
 └── docs/                    # Build output (gitignored; pushed via deploy)
     ├── index.html, posts.json
     ├── llms.txt, robots.txt, sitemap.xml
@@ -364,6 +370,8 @@ Fetch user gists → first `.md` file each → write `YYYY-MM-DD-<gist_id>.md` �
 | Script | Covers |
 |--------|--------|
 | `test-discovery.js` | `escapeXml`, `renderRobotsTxt`, `renderSitemapXml`, `buildAbsoluteUrl` |
+| `test-markdown.js` | `renderTagsHtml`, `renderRecentPostsHtml`, `truncateGraphemes` |
+| `test-templates.js` | `renderTemplate`, `buildPostTemplateVars`, `buildPostIncludes` |
 | `test-attribution.sh` | D1 extractors, D3 mirrors/llms, D4 robots/sitemap parity, D5 UA, HTML structure |
 
 Hard assertions: `rel="alternate"`, `llms.txt` completeness, `robots.txt`, `sitemap.xml` URL count (`2N+2`), slug parity llms ↔ sitemap.
@@ -390,4 +398,4 @@ Hard assertions: `rel="alternate"`, `llms.txt` completeness, `robots.txt`, `site
 - Prev/next post navigation
 - Manual dark-mode toggle (auto via `prefers-color-scheme` exists for Mermaid)
 - Category sidebar view
-- Split `utils.js` into focused modules
+- ~~Split `utils.js` into focused modules~~ ✅ done (P3: `scripts/lib/` — config, posts-index, static-assets, post-entry, markdown, attribution, templates, agent-mirrors, discovery-artifacts)
