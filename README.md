@@ -193,10 +193,10 @@ Paths are relative to the project root. If a file is missing, the build prints a
 
 **Starter files** (edit to taste):
 
-- `source/_includes/post-header.html` — optional content above the body; can include a visually hidden `.agent-context` block (author/copyright/citation instructions for automated readers)
-- `source/_includes/post-body-meta.html` — `author:` / `source:` lines at the **start** of the post body (monospace, low-profile)
-- `source/_includes/post-body-attribution.html` — same lines plus canonical URL and GitHub link at the **end** of the body
-- `source/_includes/post-footer.html` — visible footer with author name and blog link
+- `source/_includes/post-header.html` — visually hidden `.agent-context` block (copyright, citation instructions for automated readers)
+- `source/_includes/post-body-meta.html` — **only human-visible** attribution: `author:` / `source:` at the **start** of the post body (monospace, low-profile)
+- `source/_includes/post-body-attribution.html` — same lines plus canonical/GitHub links at the **end** of the body, wrapped in `.agent-context` (hidden from humans, in DOM for scrapers)
+- `source/_includes/post-footer.html` — author/blog description footer, wrapped in `.agent-context` (hidden from humans, in DOM for scrapers)
 
 Fragments support the same `{{KEY}}` placeholders as templates, for example:
 
@@ -217,7 +217,7 @@ Fragments support the same `{{KEY}}` placeholders as templates, for example:
 
 Reference external CSS/JS from fragments, e.g. `<script src="{{BASE_URL}}/js/your-file.js"></script>` (files under `assets/js/` are copied to `docs/js/` on build).
 
-**Per-post opt-out:** set `header: false` or `footer: false` in front-matter. Omitted or `true` means include. Only boolean `false` opts out; string values like `"false"` are treated as truthy. `footer: false` also skips body meta, body attribution, and the visible footer.
+**Per-post opt-out:** set `header: false` or `footer: false` in front-matter. Omitted or `true` means include. Only boolean `false` opts out; string values like `"false"` are treated as truthy. `footer: false` also skips body meta, body attribution, and the hidden footer block.
 
 **Body author/source defaults** (`blog.config.json`):
 
@@ -235,20 +235,20 @@ Reference external CSS/JS from fragments, e.g. `<script src="{{BASE_URL}}/js/you
 
 **Excerpt safety:** header/footer/body-meta HTML is injected in `templates/post.html` around `POST_CONTENT_HTML`, not inside `parseMarkdownFile`, so homepage excerpts stay body-only.
 
-**Hidden agent header:** the default `post-header.html` uses `.agent-context` with `aria-hidden="true"` and inline `!important` styles so the block stays in the HTML/DOM for scrapers but is visually hidden for sighted readers. CSS in `assets/css/style.css` reinforces this. Use `bun scripts/cli.js serve` (or `npx swp-cli serve`) for local preview — opening HTML via `file://` may not load `/css/style.css` correctly.
+**Hidden agent blocks:** `post-header.html`, `post-body-attribution.html`, and `post-footer.html` each wrap content in `.agent-context` with `aria-hidden="true"` and inline `!important` styles so attribution stays in the HTML/DOM for scrapers but is visually hidden for sighted readers. Only `post-body-meta.html` (top `author:` / `source:`) is shown to humans. CSS in `assets/css/style.css` reinforces hiding. Use `bun scripts/cli.js serve` (or `npx swp-cli serve`) for local preview — opening HTML via `file://` may not load `/css/style.css` correctly.
 
 ### Agent-Readable Markdown (static attribution)
 
 On pure static GitHub Pages (no Cloudflare/edge proxy), swan-post uses a **build-time** attribution layer inspired by [TIME's agent-readable pages](https://time.com/), without User-Agent or TLS-based routing:
 
-| Layer | Output | Who sees it |
-|-------|--------|-------------|
-| Hidden HTML header | `.agent-context` in `post-header.html` | Raw HTML / full-DOM scrapers (often stripped by Jina) |
-| Body meta (top) | `author:` / `source:` in `post-body-meta.html` | Readability extractors (trafilatura); start of body |
-| Body attribution (end) | `author:` / `source:` + links in `post-body-attribution.html` | trafilatura; end of body |
-| Visible footer | `post-footer.html` | Human readers |
-| Markdown mirror | `docs/posts/<slug>.md` | Agents, `llms.txt` consumers (most reliable) |
-| Site index | `docs/llms.txt` | Agents discovering the blog |
+| Layer | Output | Human-visible | Agent-readable |
+|-------|--------|---------------|----------------|
+| Hidden HTML header | `.agent-context` in `post-header.html` | No | Raw HTML / full-DOM scrapers (often stripped by Jina) |
+| Body meta (top) | `author:` / `source:` in `post-body-meta.html` | **Yes** | trafilatura, readability extractors |
+| Body attribution (end) | `.agent-context` + `post-body-attribution.html` | No | Raw HTML / DOM scrapers |
+| Hidden footer | `.agent-context` + `post-footer.html` | No | Raw HTML / DOM scrapers |
+| Markdown mirror | `docs/posts/<slug>.md` | N/A (separate URL) | **Most reliable** for agents |
+| Site index | `docs/llms.txt` | N/A | Agents discovering the blog |
 
 **Config** (`blog.config.json`):
 
@@ -290,7 +290,7 @@ On pure static GitHub Pages (no Cloudflare/edge proxy), swan-post uses a **build
 - `https://<site>/llms.txt` — site description + list of Markdown mirrors
 - `https://<site>/posts/<slug>.md` — attribution header + article source
 
-> **Limitation:** Unlike TIME's live edge routing, this cannot serve different content to browsers vs. agents at request time. Markdown mirrors and `llms.txt` are the reliable path for agent consumption; the hidden HTML header helps raw HTML crawlers but may be stripped by readability extractors (e.g. Jina). Body meta/attribution improves trafilatura-style extractors.
+> **Limitation:** Unlike TIME's live edge routing, this cannot serve different content to browsers vs. agents at request time. Markdown mirrors and `llms.txt` are the most reliable agent path. Hidden `.agent-context` blocks (header, body attribution, footer) help raw HTML crawlers but may be stripped by readability extractors (e.g. Jina). The visible top-of-body `author:` / `source:` meta is what humans see and what trafilatura-style extractors are most likely to pick up.
 
 **Verify attribution channels** after deploy:
 
@@ -300,7 +300,7 @@ bash scripts/test-attribution.sh
 SITE_URL=http://localhost:8080 bash scripts/test-attribution.sh
 ```
 
-Hard assertions: `rel="alternate"`, `llms.txt`, `.md` mirrors, built HTML contains `.post-body-meta` and `.post-body-attribution`. Jina(HTML) author extraction is reported as a warning only (often absent).
+Hard assertions: `rel="alternate"`, `llms.txt`, `.md` mirrors, built HTML contains `.post-body-meta` (visible) and `.post-body-attribution` inside `.agent-context` (hidden). Jina(HTML) author extraction is reported as a warning only (often absent).
 
 ## Markdown Extensions
 
@@ -371,7 +371,7 @@ Site configuration file `blog.config.json`:
 - `baseUrl`: Not needed for local preview. When deploying to GitHub Pages, if it's a project page (e.g. `https://username.github.io/reponame/`), set it to `"/reponame"`.
 - `recentPostsCount`: Number of "recent posts" displayed in the main content area on the homepage. Defaults to `10`.
 - `sidebarPostCount`: Maximum posts shown in the sidebar timeline. Defaults to `200`.
-- `postHeader` / `postFooter`: Paths to HTML fragments injected above/below the post body on post pages only. Defaults to `source/_includes/post-header.html` and `source/_includes/post-footer.html` when omitted.
+- `postHeader` / `postFooter`: Paths to HTML fragments injected above/below the post body on post pages only. Both default includes wrap content in `.agent-context` (hidden from humans). Defaults to `source/_includes/post-header.html` and `source/_includes/post-footer.html` when omitted.
 - `githubUser`: GitHub username; used by `gist-sync` and as fallback for `siteUrl`.
 - `deployTarget`: SSH URL of the GitHub Pages repo, e.g. `"git@github.com:username/username.github.io.git"`. The deploy command pushes build output to this repo. Use `deploy --force` to push when output is unchanged but the remote needs updating.
 - `siteUrl`: Public canonical site URL for agent mirrors and `llms.txt`. No trailing slash.
