@@ -516,20 +516,17 @@ body.sidebar-open #overlay-mask {
 }
 
 /* ---------- Responsive layout ---------- */
-/* Sidebar stays overlay drawer on all breakpoints (hidden until ☰). Content = 50vw, max 2400px. */
+/* Sidebar stays overlay drawer on all breakpoints (hidden until ☰). Content = 80vw, max 2400px. */
 
-@media (min-width: 641px) {
-  :root {
-    --content-max-width: clamp(720px, 50vw, 2400px);
-    --content-padding-x: clamp(28px, 4vw, 120px);
-  }
+:root {
+  --content-max-width: min(80vw, 2400px);
+  --content-padding-x: clamp(16px, 2vw, 48px);
 }
 
 /* Narrow screen: tighter padding, smaller headings */
 @media (max-width: 640px) {
   :root {
-    --content-max-width: 100%;
-    --content-padding-x: 20px;
+    --content-padding-x: 16px;
     --content-padding-top: 72px;
     --content-padding-bottom: 60px;
   }
