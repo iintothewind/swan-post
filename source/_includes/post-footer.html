@@ -1,10 +1,22 @@
-<footer class="post-footer" lang="en">
-  <p>
-    Written by <strong>Ivar.Chen</strong>.
-    Personal blog:
-    <a href="https://iintothewind.github.io/" rel="author">https://iintothewind.github.io/</a>
-  </p>
-  <p class="post-footer-note">
-    Essays, notes, and technical write-ups on software, agents, and infrastructure.
-  </p>
-</footer>
+<!--
+  Agent-readable footer (not shown to sighted readers).
+  Inline styles ensure hiding even when CSS fails to load (e.g. file:// preview).
+-->
+<div
+  class="agent-context"
+  data-purpose="post-footer"
+  lang="en"
+  aria-hidden="true"
+  style="position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;z-index:-1!important;"
+>
+  <footer class="post-footer" lang="en">
+    <p>
+      Written by <strong>{{POST_AUTHOR}}</strong>.
+      Personal blog:
+      <a href="{{POST_SOURCE}}" rel="author">{{POST_SOURCE}}</a>
+    </p>
+    <p class="post-footer-note">
+      {{SITE_DESCRIPTION}}
+    </p>
+  </footer>
+</div>

@@ -485,6 +485,7 @@ body.sidebar-open #overlay-mask {
 
 
 
+/* Visible top-of-body author/source (human-readable) */
 .post-body-meta {
   margin: 0 0 1.25rem;
   padding: 0.5rem 0 0.75rem;
@@ -495,39 +496,18 @@ body.sidebar-open #overlay-mask {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
-.post-body-attribution {
-  margin: 2rem 0 0.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px dashed var(--border);
-  font-size: 0.82rem;
-  color: var(--muted);
-  line-height: 1.5;
-}
-.post-body-attribution a {
-  color: var(--muted);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.post-body-attribution a:hover {
-  color: var(--accent);
+/* Attribution/footer inside .agent-context: hidden from humans, kept in DOM for scrapers */
+.post-body .agent-context .post-body-attribution,
+.post-body .agent-context .post-footer {
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
-.post-header,
-.post-footer {
+.post-header {
   margin: 1.5rem 0;
   padding: 1rem 0;
-  border-color: var(--border, #ddd);
-}
-.post-header { border-bottom: 1px solid; }
-.post-footer {
-  border-top: 1px solid;
-  font-size: 0.9rem;
-  color: var(--muted, #666);
-}
-.post-footer-note {
-  margin: 0.5rem 0 0;
-  font-size: 0.85rem;
-  font-style: italic;
+  border-bottom: 1px solid var(--border, #ddd);
 }
 
 /* ---------- Responsive: narrow screen ---------- */

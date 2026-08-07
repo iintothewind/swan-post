@@ -1,7 +1,19 @@
-<p class="post-body-attribution" lang="en">
-  author: {{POST_AUTHOR}}<br>
-  source: {{POST_SOURCE}}<br>
-  Written by <strong>{{POST_AUTHOR}}</strong>.
-  Canonical: <a href="{{CANONICAL_URL}}" rel="canonical">{{CANONICAL_URL}}</a>.
-  GitHub: <a href="{{GITHUB_URL}}" rel="me">{{GITHUB_USER}}</a>.
-</p>
+<!--
+  Agent-readable body attribution (not shown to sighted readers).
+  Inline styles ensure hiding even when CSS fails to load (e.g. file:// preview).
+-->
+<div
+  class="agent-context"
+  data-purpose="body-attribution"
+  lang="en"
+  aria-hidden="true"
+  style="position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;z-index:-1!important;"
+>
+  <p class="post-body-attribution" lang="en">
+    author: {{POST_AUTHOR}}<br>
+    source: {{POST_SOURCE}}<br>
+    Written by <strong>{{POST_AUTHOR}}</strong>.
+    Canonical: <a href="{{CANONICAL_URL}}" rel="canonical">{{CANONICAL_URL}}</a>.
+    GitHub: <a href="{{GITHUB_URL}}" rel="me">{{GITHUB_USER}}</a>.
+  </p>
+</div>
