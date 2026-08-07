@@ -11,6 +11,7 @@
 5. Mermaid diagram support, rendered client-side on demand — fenced ```` ```mermaid ```` blocks (flowchart, sequence, pie, etc.); the bundle loads only when a page has diagrams.
 6. Per-post header/footer injection — customize HTML fragments in `source/_includes/`; injected at build time on post pages only (not the homepage); per-post opt-out via front-matter.
 7. Agent-readable attribution (static GitHub Pages) — per-post Markdown mirrors (`docs/posts/<slug>.md`), site-wide `docs/llms.txt`, and `<link rel="alternate" type="text/markdown">` on post pages; no edge proxy or User-Agent routing required.
+8. Post-body author/source attribution — `author:` / `source:` lines at the top and bottom of every post body via configurable HTML fragments; same values prepended to agent `.md` mirrors.
 
 ## Non-Goals
 
@@ -173,6 +174,8 @@ Paths are relative to the project root. If a file is missing, the build prints a
 **Starter files** (edit to taste):
 
 - `source/_includes/post-header.html` — optional content above the body; can include a visually hidden `.agent-context` block (author/copyright/citation instructions for automated readers)
+- `source/_includes/post-body-meta.html` — `author:` / `source:` lines at the **start** of the post body (monospace, low-profile)
+- `source/_includes/post-body-attribution.html` — same lines plus canonical URL and GitHub link at the **end** of the body
 - `source/_includes/post-footer.html` — visible footer with author name and blog link
 
 Fragments support the same `{{KEY}}` placeholders as templates, for example:
@@ -187,12 +190,30 @@ Fragments support the same `{{KEY}}` placeholders as templates, for example:
 | `{{POST_DATE}}` | Formatted publish date |
 | `{{POST_SLUG}}` | Post slug |
 | `{{POST_TAGS_HTML}}` | Rendered tag pills |
+| `{{POST_AUTHOR}}` | Author for body meta (`postAuthor` config, else `author`) |
+| `{{POST_SOURCE}}` | Site source URL (`postSource` config, else `siteUrl/`) |
+| `{{CANONICAL_URL}}` | Full URL to the post HTML page |
+| `{{GITHUB_USER}}` / `{{GITHUB_URL}}` | GitHub username and profile URL |
 
 Reference external CSS/JS from fragments, e.g. `<script src="{{BASE_URL}}/js/your-file.js"></script>` (files under `assets/js/` are copied to `docs/js/` on build).
 
-**Per-post opt-out:** set `header: false` or `footer: false` in front-matter. Omitted or `true` means include. Only boolean `false` opts out; string values like `"false"` are treated as truthy.
+**Per-post opt-out:** set `header: false` or `footer: false` in front-matter. Omitted or `true` means include. Only boolean `false` opts out; string values like `"false"` are treated as truthy. `footer: false` also skips body meta, body attribution, and the visible footer.
 
-**Excerpt safety:** header/footer HTML is injected in `templates/post.html` around `POST_CONTENT_HTML`, not inside `parseMarkdownFile`, so homepage excerpts stay body-only.
+**Body author/source defaults** (`blog.config.json`):
+
+```json
+{
+  "postAuthor": "Ivar.Chen",
+  "postSource": "https://username.github.io/",
+  "postBodyMeta": "source/_includes/post-body-meta.html",
+  "postBodyAttribution": "source/_includes/post-body-attribution.html"
+}
+```
+
+- `postAuthor` — value for `author:` lines (defaults to `author`)
+- `postSource` — value for `source:` lines (defaults to `siteUrl` with trailing `/`)
+
+**Excerpt safety:** header/footer/body-meta HTML is injected in `templates/post.html` around `POST_CONTENT_HTML`, not inside `parseMarkdownFile`, so homepage excerpts stay body-only.
 
 **Hidden agent header:** the default `post-header.html` uses `.agent-context` with `aria-hidden="true"` and inline `!important` styles so the block stays in the HTML/DOM for scrapers but is visually hidden for sighted readers. CSS in `assets/css/style.css` reinforces this. Use `bun scripts/cli.js serve` (or `npx swp-cli serve`) for local preview — opening HTML via `file://` may not load `/css/style.css` correctly.
 
@@ -202,9 +223,11 @@ On pure static GitHub Pages (no Cloudflare/edge proxy), swan-post uses a **build
 
 | Layer | Output | Who sees it |
 |-------|--------|-------------|
-| Hidden HTML header | `.agent-context` in `post-header.html` | Raw HTML / full-DOM scrapers |
+| Hidden HTML header | `.agent-context` in `post-header.html` | Raw HTML / full-DOM scrapers (often stripped by Jina) |
+| Body meta (top) | `author:` / `source:` in `post-body-meta.html` | Readability extractors (trafilatura); start of body |
+| Body attribution (end) | `author:` / `source:` + links in `post-body-attribution.html` | trafilatura; end of body |
 | Visible footer | `post-footer.html` | Human readers |
-| Markdown mirror | `docs/posts/<slug>.md` | Agents, `llms.txt` consumers |
+| Markdown mirror | `docs/posts/<slug>.md` | Agents, `llms.txt` consumers (most reliable) |
 | Site index | `docs/llms.txt` | Agents discovering the blog |
 
 **Config** (`blog.config.json`):
@@ -213,15 +236,18 @@ On pure static GitHub Pages (no Cloudflare/edge proxy), swan-post uses a **build
 {
   "siteUrl": "https://username.github.io",
   "agentMarkdown": true,
-  "agentAttribution": "source/_includes/agent-attribution.md"
+  "agentAttribution": "source/_includes/agent-attribution.md",
+  "postAuthor": "Ivar.Chen",
+  "postSource": "https://username.github.io/"
 }
 ```
 
 - `siteUrl`: Canonical public site URL (no trailing slash). Used for `llms.txt`, `rel="alternate"` links, and URLs inside agent mirrors. Falls back to `https://<githubUser>.github.io` when omitted.
 - `agentMarkdown`: When `true` (default), each build/render writes `docs/posts/<slug>.md`, regenerates `docs/llms.txt`, and adds `<link rel="alternate" type="text/markdown">` in post page `<head>`. Set to `false` to disable all three.
 - `agentAttribution`: Path to the Markdown template prepended to each mirror file. Defaults to `source/_includes/agent-attribution.md`.
+- `postAuthor` / `postSource`: Prepended as `author:` / `source:` lines in each `.md` mirror (after the attribution header, before the post body).
 
-**Mirror file shape:** rendered attribution header (FAQ-style metadata) + original post Markdown body + short copyright footer.
+**Mirror file shape:** rendered attribution header (FAQ-style metadata) + `author:` / `source:` lines + original post Markdown body + short copyright footer.
 
 **Template placeholders** (`agent-attribution.md`):
 
@@ -236,13 +262,25 @@ On pure static GitHub Pages (no Cloudflare/edge proxy), swan-post uses a **build
 | `{{POST_DATE}}` | Formatted publish date |
 | `{{POST_SLUG}}` | Post slug |
 | `{{POST_TAGS}}` | Comma-separated tags |
+| `{{POST_AUTHOR}}` | Same as `postAuthor` / `author` |
+| `{{POST_SOURCE}}` | Same as `postSource` / `siteUrl/` |
 
 **After deploy**, agents can fetch:
 
 - `https://<site>/llms.txt` — site description + list of Markdown mirrors
 - `https://<site>/posts/<slug>.md` — attribution header + article source
 
-> **Limitation:** Unlike TIME's live edge routing, this cannot serve different content to browsers vs. agents at request time. Markdown mirrors and `llms.txt` are the reliable path for agent consumption; the hidden HTML header helps raw HTML crawlers but may be stripped by readability extractors.
+> **Limitation:** Unlike TIME's live edge routing, this cannot serve different content to browsers vs. agents at request time. Markdown mirrors and `llms.txt` are the reliable path for agent consumption; the hidden HTML header helps raw HTML crawlers but may be stripped by readability extractors (e.g. Jina). Body meta/attribution improves trafilatura-style extractors.
+
+**Verify attribution channels** after deploy:
+
+```bash
+bash scripts/test-attribution.sh
+# or against local preview:
+SITE_URL=http://localhost:8080 bash scripts/test-attribution.sh
+```
+
+Hard assertions: `rel="alternate"`, `llms.txt`, `.md` mirrors, built HTML contains `.post-body-meta` and `.post-body-attribution`. Jina(HTML) author extraction is reported as a warning only (often absent).
 
 ## Markdown Extensions
 
@@ -298,6 +336,10 @@ Site configuration file `blog.config.json`:
   "sidebarPostCount": 200,
   "postHeader": "source/_includes/post-header.html",
   "postFooter": "source/_includes/post-footer.html",
+  "postAuthor": "Ivar.Chen",
+  "postSource": "https://username.github.io/",
+  "postBodyMeta": "source/_includes/post-body-meta.html",
+  "postBodyAttribution": "source/_includes/post-body-attribution.html",
   "githubUser": "username",
   "deployTarget": "git@github.com:username/username.github.io.git",
   "siteUrl": "https://username.github.io",
@@ -315,6 +357,8 @@ Site configuration file `blog.config.json`:
 - `siteUrl`: Public canonical site URL for agent mirrors and `llms.txt`. No trailing slash.
 - `agentMarkdown`: Enable per-post `.md` mirrors, `llms.txt`, and `rel="alternate"` links. Default `true`; set `false` to disable.
 - `agentAttribution`: Path to the Markdown template for agent mirror headers. Defaults to `source/_includes/agent-attribution.md`.
+- `postAuthor` / `postSource`: Default values for `author:` / `source:` lines injected into every post body and prepended to `.md` mirrors. Fall back to `author` and `siteUrl/` when omitted.
+- `postBodyMeta` / `postBodyAttribution`: Paths to HTML fragments for top-of-body and end-of-body attribution. Controlled by `footer` front-matter (same as footer include).
 
 ## Directory Structure
 
@@ -326,6 +370,8 @@ swan-post/
 │   ├── _posts/
 │   └── _includes/          # Post includes (optional)
 │       ├── post-header.html
+│       ├── post-body-meta.html
+│       ├── post-body-attribution.html
 │       ├── post-footer.html
 │       └── agent-attribution.md
 ├── templates/
@@ -333,6 +379,7 @@ swan-post/
 │   ├── css/
 │   └── js/
 ├── scripts/
+│   └── test-attribution.sh # Attribution channel acceptance tests (D1–D5)
 ├── .deploy/ # Pages repo temporary clone (auto-generated, gitignored)
 ├── docs/    # Build output (gitignored, pushed to Pages repo via deploy)
 │   ├── llms.txt            # Agent-readable site index (when agentMarkdown is on)

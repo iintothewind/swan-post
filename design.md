@@ -14,6 +14,7 @@ Build a personal static blog generator in Node.js as a replacement for Hexo, wit
 3. CLI tool: can render a single `.md` file directly to `.html` and "publish" it (i.e. update the output directory + update the post index), without needing a full site rebuild.
 4. Post header/footer injection: global HTML fragments under `source/_includes/` wrap the post body at build time (post pages only); per-post `header` / `footer` front-matter flags opt out (default on).
 5. Agent-readable attribution (static GitHub Pages): per-post Markdown mirrors (`docs/posts/<slug>.md`), site-wide `docs/llms.txt`, and `<link rel="alternate" type="text/markdown">` on post pages; no edge proxy or User-Agent routing.
+6. Post-body author/source attribution: `author:` / `source:` lines at the top and bottom of every post body via configurable HTML fragments (`postBodyMeta`, `postBodyAttribution`); same values prepended to agent `.md` mirrors.
 
 **Explicitly out of scope (avoid over-engineering):**
 - No pagination (a personal blog doesn't have many posts; the sidebar shows the full list directly).
@@ -75,6 +76,8 @@ swan-post/
 │   ├── _posts/                   # Stores all Markdown posts
 │   └── _includes/                # Post includes (optional)
 │       ├── post-header.html
+│       ├── post-body-meta.html
+│       ├── post-body-attribution.html
 │       ├── post-footer.html
 │       └── agent-attribution.md
 ├── templates/                    # HTML templates (placeholder substitution, see Section 5)
@@ -97,7 +100,8 @@ swan-post/
 │   ├── new-post.js               # Create new post
 │   ├── serve.js                  # Local static preview server
 │   ├── deploy.js                 # Build + git commit + push, trigger GitHub Pages update
-│   └── gist-sync.js              # Sync GitHub public gists as posts
+│   ├── gist-sync.js              # Sync GitHub public gists as posts
+│   └── test-attribution.sh       # Attribution channel acceptance tests (D1–D5)
 ├── docs/                         # [Output directory] Build artifacts, pushed to a separate Pages repo by deploy; do not edit manually
 │   ├── index.html                # Homepage (recent N posts, server-rendered)
 │   ├── posts.json                # Post index (fetched at runtime by frontend sidebar)
@@ -163,7 +167,11 @@ docs/
   "deployTarget": "git@github.com:username/username.github.io.git",
   "siteUrl": "https://username.github.io",
   "agentMarkdown": true,
-  "agentAttribution": "source/_includes/agent-attribution.md"
+  "agentAttribution": "source/_includes/agent-attribution.md",
+  "postAuthor": "Ivar.Chen",
+  "postSource": "https://username.github.io/",
+  "postBodyMeta": "source/_includes/post-body-meta.html",
+  "postBodyAttribution": "source/_includes/post-body-attribution.html"
 }
 ```
 
@@ -176,6 +184,8 @@ docs/
 - `siteUrl`: Canonical public site URL (no trailing slash). Used for `llms.txt`, `rel="alternate"` links, and absolute URLs inside agent mirrors. Falls back to `https://<githubUser>.github.io` when omitted.
 - `agentMarkdown`: When `true` (default), each build/render writes `docs/posts/<slug>.md`, regenerates `docs/llms.txt`, and adds `<link rel="alternate" type="text/markdown">` in post page `<head>`. Set to `false` to disable all three.
 - `agentAttribution`: Path (relative to project root) to the Markdown template prepended to each mirror file. Defaults to `source/_includes/agent-attribution.md`. Missing file logs a warning and uses an empty header.
+- `postAuthor` / `postSource`: Default values for `author:` / `source:` lines injected into every post body and prepended to `.md` mirrors. Fall back to `author` and `siteUrl/` (with trailing slash) when omitted.
+- `postBodyMeta` / `postBodyAttribution`: Paths to HTML fragments for top-of-body and end-of-body attribution inside `.post-body`. Controlled by `footer` front-matter (same as footer include); `header: false` does not affect body meta/attribution.
 - When referencing static resources in all templates, the `{{BASE_URL}}` prefix must be concatenated (see Section 5), so that both root domain and sub-path deployments work correctly. **Do not hardcode absolute paths or relative `../` paths.**
 
 ---
@@ -210,7 +220,7 @@ Field descriptions:
 - `date` (required, format `YYYY-MM-DD HH:mm:ss`): Publish time, used for sorting. Note: js-yaml parses dates without timezone as **UTC** (YAML 1.1 spec), so build results are independent of the build machine's timezone — in `posts.json`, `date` stores the UTC ISO string (for sorting), and `formattedDate` takes the UTC `YYYY-MM-DD` for display, which is always equal to the date manually written in the front-matter.
 - `tags` (optional, string array): Default `[]`.
 - `categories` (optional, string array): Default `[]`. In the current version, parse and store them, but do not use categories in the UI yet (only tags are used for grouped display).
-- `header` / `footer` (optional, boolean): Default `true`. Set to `false` to opt out of global post header/footer HTML fragments on that post. Only boolean `false` opts out.
+- `header` / `footer` (optional, boolean): Default `true`. Set to `false` to opt out of global post header/footer HTML fragments on that post. Only boolean `false` opts out. `footer: false` also skips body meta, body attribution, and the visible footer.
 
 Always use the `gray-matter` library to parse this front-matter. **Do not write your own YAML parser.**
 
@@ -231,11 +241,30 @@ Both are masked in the post excerpt (see Section 7.1 `parseMarkdownFile`): inlin
 
 ### 4.1 Post header/footer includes
 
-Global HTML fragments live under `source/_includes/`. Paths are configured in `blog.config.json` (`postHeader`, `postFooter`). Both `scripts/build.js` and `scripts/render.js` call `buildPostIncludes(config, post)` and pass the rendered strings into `templates/post.html` as `{{POST_HEADER_HTML}}` and `{{POST_FOOTER_HTML}}`.
+Global HTML fragments live under `source/_includes/`. Paths are configured in `blog.config.json` (`postHeader`, `postFooter`, `postBodyMeta`, `postBodyAttribution`). Both `scripts/build.js` and `scripts/render.js` call `buildPostIncludes(config, post)` and pass the rendered strings into `templates/post.html` as `{{POST_HEADER_HTML}}`, `{{POST_BODY_META_HTML}}`, `{{POST_BODY_ATTRIBUTION_HTML}}`, and `{{POST_FOOTER_HTML}}`. All body fragments are inside `.post-body`, wrapping `{{POST_CONTENT_HTML}}`.
 
 **Starter files** (ship with the repo; user-editable):
 
 `source/_includes/post-header.html` may include a visually hidden `.agent-context` block (`aria-hidden="true"` + inline `!important` styles) so author/copyright/citation instructions stay in the HTML/DOM for scrapers but are hidden from sighted readers. CSS in `assets/css/style.css` reinforces hiding.
+
+`source/_includes/post-body-meta.html` (top of body, inside `.post-body`):
+```html
+<p class="post-body-meta" lang="en">
+  author: {{POST_AUTHOR}}<br>
+  source: {{POST_SOURCE}}
+</p>
+```
+
+`source/_includes/post-body-attribution.html` (end of body, before footer):
+```html
+<p class="post-body-attribution" lang="en">
+  author: {{POST_AUTHOR}}<br>
+  source: {{POST_SOURCE}}<br>
+  Written by <strong>{{POST_AUTHOR}}</strong>.
+  Canonical: <a href="{{CANONICAL_URL}}" rel="canonical">{{CANONICAL_URL}}</a>.
+  GitHub: <a href="{{GITHUB_URL}}" rel="me">{{GITHUB_USER}}</a>.
+</p>
+```
 
 `source/_includes/post-footer.html`:
 ```html
@@ -243,6 +272,8 @@ Global HTML fragments live under `source/_includes/`. Paths are configured in `b
   <p>&copy; {{SITE_AUTHOR}} · <a href="{{BASE_URL}}/index.html">{{SITE_TITLE}}</a></p>
 </footer>
 ```
+
+Fragment placeholders include `{{POST_AUTHOR}}`, `{{POST_SOURCE}}`, `{{CANONICAL_URL}}`, `{{GITHUB_USER}}`, `{{GITHUB_URL}}` (from `buildPostTemplateVars` in `utils.js`).
 
 Fragments may reference external assets, e.g. `<script src="{{BASE_URL}}/js/your-file.js"></script>`. Inline `<script>` is allowed (trusted local files, same model as templates).
 
@@ -272,6 +303,23 @@ Append minimal styles to `assets/css/style.css` (do not replace existing rules):
 }
 .post-header { border-bottom: 1px solid; }
 .post-footer { border-top: 1px solid; font-size: 0.9rem; color: var(--muted, #666); }
+.post-body-meta {
+  margin: 0 0 1.25rem;
+  padding: 0.5rem 0 0.75rem;
+  border-bottom: 1px dashed var(--border);
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+.post-body-attribution {
+  margin: 2rem 0 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
 ```
 
 **Out of scope for this version:** per-post custom fragment paths (`headerFile` / `footerFile` front-matter). Only global fragments + per-post boolean opt-out.
@@ -282,15 +330,15 @@ On pure static GitHub Pages (no edge proxy), swan-post emits agent-readable cont
 
 | Output | Path | Purpose |
 |--------|------|---------|
-| Per-post mirror | `docs/posts/<slug>.md` | FAQ-style attribution header + original Markdown body + copyright footer |
+| Per-post mirror | `docs/posts/<slug>.md` | FAQ-style attribution header + `author:`/`source:` lines + original Markdown body + copyright footer |
 | Site index | `docs/llms.txt` | Site description + list of Markdown mirror URLs |
 | HTML discovery | `<link rel="alternate" type="text/markdown" href="...">` in post `<head>` | Points agents to the `.md` mirror |
 
 Controlled by `agentMarkdown` (default `true`). Set `false` to disable all three.
 
-`source/_includes/agent-attribution.md` is the mirror header template. Placeholders: `{{SITE_AUTHOR}}`, `{{SITE_URL}}`, `{{GITHUB_USER}}`, `{{GITHUB_URL}}`, `{{CANONICAL_URL}}`, `{{POST_TITLE}}`, `{{POST_DATE}}`, `{{POST_SLUG}}`, `{{POST_TAGS}}`.
+`source/_includes/agent-attribution.md` is the mirror header template. Placeholders: `{{SITE_AUTHOR}}`, `{{SITE_URL}}`, `{{GITHUB_USER}}`, `{{GITHUB_URL}}`, `{{CANONICAL_URL}}`, `{{POST_TITLE}}`, `{{POST_DATE}}`, `{{POST_SLUG}}`, `{{POST_TAGS}}`, `{{POST_AUTHOR}}`, `{{POST_SOURCE}}`.
 
-`scripts/utils.js` provides: `getSiteUrl`, `getPostCanonicalUrl`, `getPostMarkdownUrl`, `buildAgentMarkdown`, `writeAgentMarkdownFile`, `renderLlmsTxt`, `writeLlmsTxt`, `renderPostAlternateLink`.
+`scripts/utils.js` provides: `getPostAuthor`, `getPostSource`, `buildPostTemplateVars`, `getSiteUrl`, `getPostCanonicalUrl`, `getPostMarkdownUrl`, `buildAgentMarkdown`, `writeAgentMarkdownFile`, `renderLlmsTxt`, `writeLlmsTxt`, `renderPostAlternateLink`.
 
 `parseMarkdownFile` must also return raw `content` (Markdown body string) for mirror generation.
 
@@ -425,11 +473,13 @@ All template files use `{{KEY}}` placeholders. The build script performs simple 
 <span class="post-date">{{POST_DATE_FORMATTED}}</span>
 <span class="post-tags">{{POST_TAGS_HTML}}</span>
 </div>
-{{POST_HEADER_HTML}}
 <div class="post-body">
+{{POST_HEADER_HTML}}
+{{POST_BODY_META_HTML}}
 {{POST_CONTENT_HTML}}
-</div>
+{{POST_BODY_ATTRIBUTION_HTML}}
 {{POST_FOOTER_HTML}}
+</div>
 </article>
 ```
 
@@ -1050,22 +1100,46 @@ const content = fs.readFileSync(absPath, "utf-8");
 return content || "";
 }
 
-function buildPostIncludes(config, post) {
-const headerPath = config.postHeader || "source/_includes/post-header.html";
-const footerPath = config.postFooter || "source/_includes/post-footer.html";
-const templateVars = {
+function getPostAuthor(config) {
+return config.postAuthor || config.author || "";
+}
+
+function getPostSource(config) {
+if (config.postSource) return String(config.postSource);
+const site = getSiteUrl(config);
+return site ? site.replace(/\/$/, "") + "/" : "";
+}
+
+function buildPostTemplateVars(config, post) {
+return {
 SITE_TITLE: config.title || "",
 SITE_AUTHOR: config.author || "",
 SITE_DESCRIPTION: config.description || "",
 BASE_URL: config.baseUrl || "",
+SITE_URL: getSiteUrl(config),
+POST_AUTHOR: getPostAuthor(config),
+POST_SOURCE: getPostSource(config),
 POST_TITLE: post.title,
 POST_DATE: post.formattedDate,
 POST_SLUG: post.slug,
-POST_TAGS_HTML: renderTagsHtml(post.tags)
+POST_TAGS_HTML: renderTagsHtml(post.tags),
+CANONICAL_URL: getPostCanonicalUrl(config, post.slug),
+GITHUB_USER: config.githubUser || "",
+GITHUB_URL: config.githubUser ? "https://github.com/" + config.githubUser : ""
 };
+}
+
+function buildPostIncludes(config, post) {
+const headerPath = config.postHeader || "source/_includes/post-header.html";
+const footerPath = config.postFooter || "source/_includes/post-footer.html";
+const bodyMetaPath = config.postBodyMeta || "source/_includes/post-body-meta.html";
+const bodyAttributionPath = config.postBodyAttribution || "source/_includes/post-body-attribution.html";
+const templateVars = buildPostTemplateVars(config, post);
 const headerHtml = post.showHeader ? renderTemplate(loadPostIncludeFile(headerPath), templateVars) : "";
+const bodyMetaHtml = post.showFooter ? renderTemplate(loadPostIncludeFile(bodyMetaPath), templateVars) : "";
 const footerHtml = post.showFooter ? renderTemplate(loadPostIncludeFile(footerPath), templateVars) : "";
-return { headerHtml, footerHtml };
+const bodyAttributionHtml = post.showFooter ? renderTemplate(loadPostIncludeFile(bodyAttributionPath), templateVars) : "";
+return { headerHtml, bodyMetaHtml, footerHtml, bodyAttributionHtml };
 }
 
 function getSiteUrl(config) {
@@ -1091,21 +1165,12 @@ if (config.agentMarkdown === false) return "";
 const templatePath = config.agentAttribution || "source/_includes/agent-attribution.md";
 const template = loadPostIncludeFile(templatePath);
 const tags = Array.isArray(post.tags) ? post.tags.join(", ") : "";
-const header = renderTemplate(template, {
-SITE_TITLE: config.title || "",
-SITE_AUTHOR: config.author || "",
-SITE_DESCRIPTION: config.description || "",
-SITE_URL: getSiteUrl(config),
-GITHUB_USER: config.githubUser || "",
-GITHUB_URL: config.githubUser ? "https://github.com/" + config.githubUser : "",
-CANONICAL_URL: getPostCanonicalUrl(config, post.slug),
-POST_TITLE: post.title,
-POST_DATE: post.formattedDate,
-POST_SLUG: post.slug,
-POST_TAGS: tags
-});
-const footer = "\n---\n\n> © " + (config.author || "") + " · " + getSiteUrl(config) + "\n";
-return header + "\n" + (post.content || "").trim() + footer;
+const templateVars = buildPostTemplateVars(config, post);
+templateVars.POST_TAGS = tags;
+const header = renderTemplate(template, templateVars);
+const bodyMeta = "author: " + getPostAuthor(config) + "\nsource: " + getPostSource(config) + "\n\n";
+const footer = "\n---\n\n> © " + getPostAuthor(config) + " · " + getSiteUrl(config) + "\n";
+return header + "\n" + bodyMeta + (post.content || "").trim() + footer;
 }
 
 function writeAgentMarkdownFile(docsDir, post, markdown) {
@@ -1265,6 +1330,7 @@ loadConfig, copyStaticAssets, parseMarkdownFile, renderTemplate, listPostFiles,
 renderTagsHtml, sortPostsByDateDesc, renderRecentPostsHtml,
 loadPostsIndex, savePostsIndex,
 resolvePostIncludeFlags, loadPostIncludeFile, buildPostIncludes,
+getPostAuthor, getPostSource, buildPostTemplateVars, getSiteUrl, getPostCanonicalUrl, getPostMarkdownUrl,
 buildAgentMarkdown, writeAgentMarkdownFile, renderLlmsTxt, writeLlmsTxt, renderPostAlternateLink
 };
 ```
@@ -1332,13 +1398,15 @@ const posts = files.map(parseMarkdownFile);
 
 // 5. Generate an HTML page for each post
 posts.forEach((post) => {
-const { headerHtml, footerHtml } = buildPostIncludes(config, post);
+const { headerHtml, bodyMetaHtml, footerHtml, bodyAttributionHtml } = buildPostIncludes(config, post);
 const postHtml = renderTemplate(postTpl, {
 POST_TITLE: post.title,
 POST_DATE_FORMATTED: post.formattedDate,
 POST_TAGS_HTML: renderTagsHtml(post.tags),
 POST_HEADER_HTML: headerHtml,
+POST_BODY_META_HTML: bodyMetaHtml,
 POST_CONTENT_HTML: post.contentHtml,
+POST_BODY_ATTRIBUTION_HTML: bodyAttributionHtml,
 POST_FOOTER_HTML: footerHtml,
 BASE_URL: config.baseUrl
 });
@@ -1413,13 +1481,15 @@ const post = parseMarkdownFile(absPath);
 const postTpl = fs.readFileSync(path.join(process.cwd(), "templates", "post.html"), "utf-8");
 const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
 
-const { headerHtml, footerHtml } = buildPostIncludes(config, post);
+const { headerHtml, bodyMetaHtml, footerHtml, bodyAttributionHtml } = buildPostIncludes(config, post);
 const postHtml = renderTemplate(postTpl, {
 POST_TITLE: post.title,
 POST_DATE_FORMATTED: post.formattedDate,
 POST_TAGS_HTML: renderTagsHtml(post.tags),
 POST_HEADER_HTML: headerHtml,
+POST_BODY_META_HTML: bodyMetaHtml,
 POST_CONTENT_HTML: post.contentHtml,
+POST_BODY_ATTRIBUTION_HTML: bodyAttributionHtml,
 POST_FOOTER_HTML: footerHtml,
 BASE_URL: config.baseUrl
 });
@@ -1934,7 +2004,7 @@ swp-cli deploy -m "Wrote a new post"
 
 ## 10. Implementation Checklist (agent, please complete in order, self-check after each step)
 
-1. Create the complete directory structure and empty files from Section 2 (including `source/_includes/post-header.html`, `post-footer.html`, and `agent-attribution.md` per Sections 4.1–4.2).
+1. Create the complete directory structure and empty files from Section 2 (including `source/_includes/post-header.html`, `post-body-meta.html`, `post-body-attribution.html`, `post-footer.html`, and `agent-attribution.md` per Sections 4.1–4.2).
 2. Write `.gitignore` (Section 2.1 content, use as-is).
 3. Write `package.json` (Section 1 content), run `npm install`.
 4. Write `blog.config.json` (Section 3 content).
@@ -1970,6 +2040,7 @@ swp-cli deploy -m "Wrote a new post"
 23. Test gist-sync: after configuring `githubUser` in `blog.config.json`, run `node scripts/cli.js gist-sync`, verify that posts with `gist_id` front-matter are generated under `source/_posts/` and `docs/` is rebuilt; run again and verify it outputs "Updated N posts" instead of adding duplicates; delete a gist on GitHub and run again, verify the corresponding local post is deleted.
 24. Test post header/footer: run `node scripts/cli.js build`, verify post HTML contains `.post-footer` below the body and homepage has no footer fragment; add `header: false` / `footer: false` to one post and rebuild — that post omits fragments while others keep them; confirm `posts.json` excerpts exclude footer text; run incremental `render` on a post and confirm same behavior; temporarily rename `post-header.html` and rebuild — expect a console warning, successful build, empty header.
 25. Test agent Markdown: run `node scripts/cli.js build`, verify each post has `docs/posts/<slug>.md`, `docs/llms.txt` exists and lists mirrors, post HTML `<head>` contains `rel="alternate" type="text/markdown"`; set `agentMarkdown: false` and rebuild — `.md` mirrors, `llms.txt`, and alternate links are absent; run incremental `render` and confirm `llms.txt` updates.
+26. Test body author/source attribution: run `node scripts/cli.js build`, verify post HTML `.post-body` contains `.post-body-meta` at the top and `.post-body-attribution` before `.post-footer`; `.md` mirrors start body with `author:` / `source:` lines; set `footer: false` on one post and rebuild — that post omits body meta, body attribution, and footer; run `bash scripts/test-attribution.sh` against local `serve` or deployed site.
 
 ---
 
@@ -1992,6 +2063,7 @@ swp-cli deploy -m "Wrote a new post"
 - [ ] `swp-cli gist-sync` (or `node scripts/cli.js gist-sync`) can fetch all public gists of `githubUser` that contain Markdown files, generate posts with `gist_id` front-matter into `source/_posts/`, and rebuild; when a gist is deleted, the corresponding local post is cleaned up.
 - [ ] Post pages inject global header/footer HTML from `source/_includes/` (configurable via `postHeader` / `postFooter`); per-post `header: false` / `footer: false` opts out; excerpts exclude fragment text; missing include files warn and continue.
 - [ ] When `agentMarkdown` is enabled: each post outputs `docs/posts/<slug>.md`, `docs/llms.txt` is regenerated on build/render, and post pages include `<link rel="alternate" type="text/markdown">`; setting `agentMarkdown: false` disables all three.
+- [ ] Post-body attribution: `.post-body-meta` and `.post-body-attribution` inject `author:` / `source:` lines (configurable via `postBodyMeta` / `postBodyAttribution`); `footer: false` opts out; `.md` mirrors prepend the same `author:` / `source:` lines; `scripts/test-attribution.sh` passes hard assertions after deploy.
 
 ---
 
