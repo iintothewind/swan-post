@@ -10,7 +10,8 @@
     "new": "node scripts/cli.js new",
     "render": "node scripts/cli.js render",
     "serve": "node scripts/cli.js serve",
-    "deploy": "node scripts/cli.js deploy"
+    "deploy": "node scripts/cli.js deploy",
+    "test": "node scripts/cli.js build && node --test scripts/test-discovery.js && bash scripts/test-attribution.sh"
   },
   "dependencies": {
     "commander": "^12.0.0",

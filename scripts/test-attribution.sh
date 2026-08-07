@@ -9,6 +9,7 @@
 
 set -euo pipefail
 
+
 SITE_URL="${SITE_URL:-https://iintothewind.github.io}"
 TEST_SLUG="${TEST_SLUG:-2026-08-05-168f4cd49504e3aa8f7cdf86e8a0bbbd}"
 AUTHOR="${AUTHOR:-Ivar.Chen}"
@@ -17,6 +18,8 @@ GITHUB_USER="${GITHUB_USER:-iintothewind}"
 HTML_URL="${SITE_URL%/}/posts/${TEST_SLUG}.html"
 MD_URL="${SITE_URL%/}/posts/${TEST_SLUG}.md"
 LLMS_URL="${SITE_URL%/}/llms.txt"
+ROBOTS_URL="${SITE_URL%/}/robots.txt"
+SITEMAP_URL="${SITE_URL%/}/sitemap.xml"
 
 PASS=0
 FAIL=0
@@ -55,7 +58,7 @@ else
 fi
 
 if [[ -f docs/posts.json ]]; then
-  POSTS_JSON_COUNT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/posts.json','utf8')).length)")
+  POSTS_JSON_COUNT=$(grep -c '"slug"' docs/posts.json)
   LLMS_MD_COUNT=$(echo "$LLMS" | rg -o '/posts/[^)]+.md' | wc -l | tr -d ' ')
   SOURCE_MD_COUNT=$(ls source/_posts/*.md 2>/dev/null | wc -l | tr -d ' ')
   if [[ "$LLMS_MD_COUNT" -eq "$POSTS_JSON_COUNT" && "$LLMS_MD_COUNT" -eq "$SOURCE_MD_COUNT" ]]; then
@@ -71,6 +74,49 @@ if contains "$MD" "Source metadata" && contains "$MD" "$AUTHOR"; then
   pass ".md mirror has FAQ attribution header"
 else
   fail ".md mirror missing Source metadata or author"
+fi
+
+# --- D4: robots.txt + sitemap.xml ---
+echo ""
+echo "--- D4: crawler discovery ---"
+if [[ -f docs/robots.txt ]]; then
+  ROBOTS=$(cat docs/robots.txt)
+  pass "using local built robots.txt"
+else
+  ROBOTS=$(curl -fsSL "$ROBOTS_URL")
+fi
+
+if contains "$ROBOTS" "Allow: /" && contains "$ROBOTS" "Sitemap:"; then
+  pass "robots.txt allows crawling and declares sitemap"
+else
+  fail "robots.txt missing Allow: / or Sitemap:"
+fi
+
+if [[ -f docs/sitemap.xml ]]; then
+  SITEMAP=$(cat docs/sitemap.xml)
+  pass "using local built sitemap.xml"
+else
+  SITEMAP=$(curl -fsSL "$SITEMAP_URL")
+fi
+
+SITEMAP_LOC_COUNT=$(echo "$SITEMAP" | rg -o '<loc>' | wc -l | tr -d ' ')
+if [[ -f docs/posts.json ]]; then
+  EXPECTED_SITEMAP=$((POSTS_JSON_COUNT * 2 + 2))
+  if [[ "$SITEMAP_LOC_COUNT" -eq "$EXPECTED_SITEMAP" ]]; then
+    pass "sitemap.xml has ${SITEMAP_LOC_COUNT} URLs (homepage + llms.txt + ${POSTS_JSON_COUNT} html + ${POSTS_JSON_COUNT} md)"
+  else
+    fail "sitemap.xml URL count mismatch: got=${SITEMAP_LOC_COUNT}, expected=${EXPECTED_SITEMAP}"
+  fi
+else
+  warn "docs/posts.json not found; skipping sitemap URL count check"
+fi
+
+LLMS_SLUGS=$(echo "$LLMS" | rg -o '/posts/[^)]+\.md' | sed 's|.*/posts/||;s|\.md||' | sort)
+SITEMAP_MD_SLUGS=$(echo "$SITEMAP" | rg -o '<loc>[^<]+/posts/[^<]+\.md</loc>' | sed 's|.*/posts/||;s|\.md</loc>||' | sort)
+if diff -q <(echo "$LLMS_SLUGS") <(echo "$SITEMAP_MD_SLUGS") >/dev/null 2>&1; then
+  pass "sitemap .md URLs match llms.txt slugs"
+else
+  fail "sitemap .md slugs differ from llms.txt"
 fi
 
 # --- Built HTML structure ---

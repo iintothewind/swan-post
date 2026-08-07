@@ -205,6 +205,19 @@ const sourceDir = path.join(process.cwd(), "source", "_posts");
 if (fs.existsSync(sourceDir)) {
 const files = listPostFiles();
 if (files.length > 0) {
+const sourceSlugs = new Set(files.map((f) => path.basename(f, ".md")));
+if (
+postsIndex.length > 0
+&& postsIndex.length === sourceSlugs.size
+&& postsIndex.every((post) => sourceSlugs.has(post.slug))
+) {
+return sortPostsByDateDesc(postsIndex.map((post) => ({
+title: post.title,
+slug: post.slug,
+date: post.date,
+excerpt: post.excerpt || ""
+})));
+}
 return sortPostsByDateDesc(files.map(parseMarkdownFile).map((post) => ({
 title: post.title,
 slug: post.slug,
@@ -532,5 +545,5 @@ resolvePostIncludeFlags, loadPostIncludeFile, buildPostIncludes,
 getDefaultPostAuthor, getDefaultPostSource, getPostAuthor, getPostSource, formatPostAttributionFrontMatter, buildPostTemplateVars, getSiteUrl, getPostCanonicalUrl, getPostMarkdownUrl,
 buildAgentMarkdown, writeAgentMarkdownFile, renderLlmsTxt, writeLlmsTxt, renderPostAlternateLink,
 renderRobotsTxt, renderSitemapXml, writeRobotsTxt, writeSitemapXml, writeSiteDiscoveryArtifacts,
-buildAbsoluteUrl, resolveLlmsEntries
+buildAbsoluteUrl, resolveLlmsEntries, escapeXml
 };

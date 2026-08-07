@@ -12,6 +12,7 @@
 6. Per-post header/footer injection — customize HTML fragments in `source/_includes/`; injected at build time on post pages only (not the homepage); per-post opt-out via front-matter.
 7. Agent-readable attribution (static GitHub Pages) — per-post Markdown mirrors (`docs/posts/<slug>.md`), site-wide `docs/llms.txt`, and `<link rel="alternate" type="text/markdown">` on post pages; no edge proxy or User-Agent routing required.
 8. Post-body author/source attribution — `author:` / `source:` lines at the top and bottom of every post body via configurable HTML fragments; same values prepended to agent `.md` mirrors.
+9. Crawler discovery — each build/render writes `docs/robots.txt` (allow all + sitemap link) and `docs/sitemap.xml` (homepage, every post HTML/MD mirror, and `llms.txt`).
 
 ## Non-Goals
 
@@ -79,6 +80,8 @@ After build, agent mirrors are also available locally:
 
 - `http://localhost:8080/llms.txt`
 - `http://localhost:8080/posts/<slug>.md`
+- `http://localhost:8080/robots.txt`
+- `http://localhost:8080/sitemap.xml`
 
 ### Deploy to GitHub Pages
 
@@ -217,8 +220,8 @@ On pure static GitHub Pages (no Cloudflare/edge proxy), swan-post uses a **build
 }
 ```
 
-- `siteUrl`: Canonical public site URL (no trailing slash). Used for `llms.txt`, `rel="alternate"` links, and URLs inside agent mirrors. Falls back to `https://<githubUser>.github.io` when omitted.
-- `agentMarkdown`: When `true` (default), each build/render writes `docs/posts/<slug>.md`, regenerates `docs/llms.txt`, and adds `<link rel="alternate" type="text/markdown">` in post page `<head>`. Set to `false` to disable all three.
+- `siteUrl`: Canonical public site URL (no trailing slash). Used for `llms.txt`, `robots.txt`, `sitemap.xml`, `rel="alternate"` links, and URLs inside agent mirrors. Falls back to `https://<githubUser>.github.io` when omitted.
+- `agentMarkdown`: When `true` (default), each build/render writes `docs/posts/<slug>.md`, regenerates `docs/llms.txt`, `docs/robots.txt`, and `docs/sitemap.xml`, and adds `<link rel="alternate" type="text/markdown">` in post page `<head>`. Set to `false` to disable Markdown mirrors and `llms.txt` (robots/sitemap still generated).
 - `agentAttribution`: Path to the Markdown template prepended to each mirror file. Defaults to `source/_includes/agent-attribution.md`.
 - `postAuthor` / `postSource`: Site-wide defaults; `new`/`gist-sync` copy into each post; front-matter overrides at build time for HTML and `.md` mirrors.
 
@@ -228,8 +231,16 @@ On pure static GitHub Pages (no Cloudflare/edge proxy), swan-post uses a **build
 
 - `https://<site>/llms.txt` — site description + list of Markdown mirrors
 - `https://<site>/posts/<slug>.md` — attribution header + article source
+- `https://<site>/robots.txt` — crawler policy (`Allow: /`) and sitemap URL
+- `https://<site>/sitemap.xml` — machine-readable URL index for search engines and agents
 
 > **Limitation:** Static GitHub Pages cannot serve different HTML vs. Markdown per User-Agent. `.md` mirrors and `llms.txt` remain the most reliable path; `.agent-camouflage` HTML blocks are a bonus channel for Jina-style extractors.
+
+**Run tests** (build + unit tests + attribution/crawler acceptance):
+
+```bash
+npm test
+```
 
 **Verify attribution channels** after deploy:
 
@@ -239,7 +250,7 @@ bash scripts/test-attribution.sh
 SITE_URL=http://localhost:8080 bash scripts/test-attribution.sh
 ```
 
-Hard assertions: `rel="alternate"`, `llms.txt`, `.md` mirrors, `.post-body-meta`, `.agent-camouflage`. Jina(HTML) extraction is reported as a soft signal.
+Hard assertions: `rel="alternate"`, `llms.txt`, `robots.txt`, `sitemap.xml`, `.md` mirrors, `.post-body-meta`, `.agent-camouflage`. Jina(HTML) extraction is reported as a soft signal.
 
 ## Markdown Extensions
 
@@ -338,10 +349,13 @@ swan-post/
 │   ├── css/
 │   └── js/
 ├── scripts/
-│   └── test-attribution.sh # Attribution channel acceptance tests (D1–D5)
+│   ├── test-attribution.sh # Attribution + crawler acceptance tests (D1–D5)
+│   └── test-discovery.js   # Unit tests for robots.txt / sitemap.xml helpers
 ├── .deploy/ # Pages repo temporary clone (auto-generated, gitignored)
 ├── docs/    # Build output (gitignored, pushed to Pages repo via deploy)
 │   ├── llms.txt            # Agent-readable site index (when agentMarkdown is on)
+│   ├── robots.txt          # Crawler policy + sitemap link
+│   ├── sitemap.xml         # URL index for crawlers/agents
 │   └── posts/
 │       ├── <slug>.html
 │       └── <slug>.md       # Agent-readable mirror (when agentMarkdown is on)
