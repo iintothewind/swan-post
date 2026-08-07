@@ -10,5 +10,6 @@
   "githubUser": "iintothewind",
   "deployTarget": "git@github.com:iintothewind/iintothewind.github.io.git",
   "siteUrl": "https://iintothewind.github.io",
-  "agentMarkdown": true
+  "agentMarkdown": true,
+  "postBodyAttribution": "source/_includes/post-body-attribution.html"
 }

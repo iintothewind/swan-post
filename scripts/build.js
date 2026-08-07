@@ -56,13 +56,14 @@ const posts = files.map(parseMarkdownFile);
 
 // 5. Generate an HTML page for each post
 posts.forEach((post) => {
-const { headerHtml, footerHtml } = buildPostIncludes(config, post);
+const { headerHtml, footerHtml, bodyAttributionHtml } = buildPostIncludes(config, post);
 const postHtml = renderTemplate(postTpl, {
 POST_TITLE: post.title,
 POST_DATE_FORMATTED: post.formattedDate,
 POST_TAGS_HTML: renderTagsHtml(post.tags),
 POST_HEADER_HTML: headerHtml,
 POST_CONTENT_HTML: post.contentHtml,
+POST_BODY_ATTRIBUTION_HTML: bodyAttributionHtml,
 POST_FOOTER_HTML: footerHtml,
 BASE_URL: config.baseUrl
 });

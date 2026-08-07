@@ -483,6 +483,24 @@ body.sidebar-open #overlay-mask {
   z-index: -1 !important;
 }
 
+
+.post-body-attribution {
+  margin: 2rem 0 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.post-body-attribution a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.post-body-attribution a:hover {
+  color: var(--accent);
+}
+
 .post-header,
 .post-footer {
   margin: 1.5rem 0;

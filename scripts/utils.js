@@ -204,15 +204,20 @@ return content || "";
 function buildPostIncludes(config, post) {
 const headerPath = config.postHeader || "source/_includes/post-header.html";
 const footerPath = config.postFooter || "source/_includes/post-footer.html";
+const bodyAttributionPath = config.postBodyAttribution || "source/_includes/post-body-attribution.html";
 const templateVars = {
 SITE_TITLE: config.title || "",
 SITE_AUTHOR: config.author || "",
 SITE_DESCRIPTION: config.description || "",
 BASE_URL: config.baseUrl || "",
+SITE_URL: getSiteUrl(config),
 POST_TITLE: post.title,
 POST_DATE: post.formattedDate,
 POST_SLUG: post.slug,
-POST_TAGS_HTML: renderTagsHtml(post.tags)
+POST_TAGS_HTML: renderTagsHtml(post.tags),
+CANONICAL_URL: getPostCanonicalUrl(config, post.slug),
+GITHUB_USER: config.githubUser || "",
+GITHUB_URL: config.githubUser ? "https://github.com/" + config.githubUser : ""
 };
 const headerHtml = post.showHeader
 ? renderTemplate(loadPostIncludeFile(headerPath), templateVars)
@@ -220,7 +225,10 @@ const headerHtml = post.showHeader
 const footerHtml = post.showFooter
 ? renderTemplate(loadPostIncludeFile(footerPath), templateVars)
 : "";
-return { headerHtml, footerHtml };
+const bodyAttributionHtml = post.showFooter
+? renderTemplate(loadPostIncludeFile(bodyAttributionPath), templateVars)
+: "";
+return { headerHtml, footerHtml, bodyAttributionHtml };
 }
 
 // Simple placeholder substitution: template is a template string, vars is a { KEY: value } object.
