@@ -541,7 +541,22 @@ body.sidebar-open #overlay-mask {
 
 @media (min-width: 1920px) {
   :root {
-    --content-max-width: 1200px;
+    /* Fluid between 1200px and 1600px on large/4K viewports */
+    --content-max-width: clamp(1200px, 42vw, 1600px);
+    --content-padding-x: clamp(56px, 5vw, 120px);
+  }
+}
+
+@media (min-width: 2560px) {
+  :root {
+    --content-max-width: clamp(1300px, 40vw, 1680px);
+  }
+}
+
+@media (min-width: 3840px) {
+  :root {
+    --content-max-width: 1680px;
+    --content-padding-x: 120px;
   }
 }
 
