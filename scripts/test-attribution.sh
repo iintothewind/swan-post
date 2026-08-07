@@ -78,10 +78,10 @@ else
   fail "HTML missing post-body-attribution block"
 fi
 
-if echo "$STRUCT_HTML" | rg -q 'class="agent-context"'; then
-  pass "HTML contains hidden agent-context block (bonus channel)"
+if echo "$STRUCT_HTML" | rg -q 'class="agent-camouflage"'; then
+  pass "HTML contains agent-camouflage block (bg-matched micro text)"
 else
-  warn "HTML missing agent-context block"
+  warn "HTML missing agent-camouflage block"
 fi
 
 # --- D1: extractors ---

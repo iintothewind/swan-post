@@ -178,7 +178,7 @@ docs/
 - `baseUrl`: If the blog is deployed at `https://username.github.io/` (root domain), leave `baseUrl` as an empty string `""`. If deployed at `https://username.github.io/reponame/` (project page), set `baseUrl` to `"/reponame"`.
 - `recentPostsCount`: The number of "recent posts" displayed in the homepage content area, default `10`. Changing this number does not require code changes; the build script reads the config and falls back to `10` if the field is missing.
 - `sidebarPostCount`: The maximum number of posts shown in the sidebar "Timeline" tab, default `200`. Only affects the frontend display count, not the `posts.json` content.
-- `postHeader` / `postFooter`: Optional paths (relative to project root) to HTML fragments injected above/below the post body on **post pages only**. Default includes wrap content in `.agent-context` (hidden from humans). Defaults to `source/_includes/post-header.html` and `source/_includes/post-footer.html` when omitted. Missing files log a warning and render as empty strings; the build does not fail.
+- `postHeader` / `postFooter`: Optional paths to HTML fragments injected above/below the post body on **post pages only**. Header and body-attribution use `.agent-camouflage`; footer ships as an empty placeholder. Missing files log a warning and render as empty strings.
 - `githubUser`: GitHub username, used by the `gist-sync` command to fetch public gists (can also be overridden via the `--user` CLI flag).
 - `deployTarget`: SSH URL of the GitHub Pages repository. The deploy command pushes build artifacts to this repo. The source repo (`swan-post`) and Pages repo are separate.
 - `siteUrl`: Canonical public site URL (no trailing slash). Used for `llms.txt`, `rel="alternate"` links, and absolute URLs inside agent mirrors. Falls back to `https://<githubUser>.github.io` when omitted.
@@ -242,87 +242,20 @@ Both are masked in the post excerpt (see Section 7.1 `parseMarkdownFile`): inlin
 
 ### 4.1 Post header/footer includes
 
-Global HTML fragments live under `source/_includes/`. Paths are configured in `blog.config.json` (`postHeader`, `postFooter`, `postBodyMeta`, `postBodyAttribution`). Both `scripts/build.js` and `scripts/render.js` call `buildPostIncludes(config, post)` and pass the rendered strings into `templates/post.html` as `{{POST_HEADER_HTML}}`, `{{POST_BODY_META_HTML}}`, `{{POST_BODY_ATTRIBUTION_HTML}}`, and `{{POST_FOOTER_HTML}}`. All body fragments are inside `.post-body`, wrapping `{{POST_CONTENT_HTML}}`.
+Global HTML fragments live under `source/_includes/`. `buildPostIncludes(config, post)` in `utils.js` renders them into `templates/post.html` placeholders.
 
-**Starter files** (ship with the repo; user-editable):
+| File | Visibility | Purpose |
+|------|------------|---------|
+| `post-header.html` | `.agent-camouflage` (nearly invisible) | Copyright + citation instructions for scrapers |
+| `post-body-meta.html` | Human-visible | Top-of-body `author:` / `source:` |
+| `post-body-attribution.html` | `.agent-camouflage` | End-of-body canonical/GitHub links |
+| `post-footer.html` | Empty placeholder | Reserved for future footer content |
 
-**Visibility model:** Only `post-body-meta.html` (top `author:` / `source:`) is shown to humans. `post-header.html`, `post-body-attribution.html`, and `post-footer.html` each wrap content in a visually hidden `.agent-context` block (`aria-hidden="true"` + inline `!important` styles) so attribution stays in the HTML/DOM for scrapers but is hidden from sighted readers. CSS in `assets/css/style.css` reinforces hiding.
+**Camouflage:** `.agent-camouflage` uses 1px font + `color`/`background: var(--bg)` + `max-height: 3px`. No `aria-hidden`, `clip`, or `opacity: 0` — readability extractors (e.g. Jina) often strip those. See shipped files and `assets/css/style.css`.
 
-`source/_includes/post-header.html` — hidden `.agent-context` with copyright and citation instructions (see shipped file).
+Fragment placeholders come from `buildPostTemplateVars` (`{{POST_AUTHOR}}`, `{{POST_SOURCE}}`, `{{CANONICAL_URL}}`, etc.).
 
-`source/_includes/post-body-meta.html` (top of body, **human-visible**):
-```html
-<p class="post-body-meta" lang="en">
-  author: {{POST_AUTHOR}}<br>
-  source: {{POST_SOURCE}}
-</p>
-```
-
-`source/_includes/post-body-attribution.html` (end of body, **hidden** inside `.agent-context`):
-```html
-<div class="agent-context" data-purpose="body-attribution" aria-hidden="true" style="...">
-  <p class="post-body-attribution" lang="en">
-    author: {{POST_AUTHOR}}<br>
-    source: {{POST_SOURCE}}<br>
-    Written by <strong>{{POST_AUTHOR}}</strong>.
-    Canonical: <a href="{{CANONICAL_URL}}" rel="canonical">{{CANONICAL_URL}}</a>.
-    GitHub: <a href="{{GITHUB_URL}}" rel="me">{{GITHUB_USER}}</a>.
-  </p>
-</div>
-```
-
-`source/_includes/post-footer.html` (end of body, **hidden** inside `.agent-context`):
-```html
-<div class="agent-context" data-purpose="post-footer" aria-hidden="true" style="...">
-  <footer class="post-footer" lang="en">
-    <p>Written by <strong>{{POST_AUTHOR}}</strong>. Personal blog: <a href="{{POST_SOURCE}}">{{POST_SOURCE}}</a></p>
-    <p class="post-footer-note">{{SITE_DESCRIPTION}}</p>
-  </footer>
-</div>
-```
-
-Fragment placeholders include `{{POST_AUTHOR}}`, `{{POST_SOURCE}}`, `{{CANONICAL_URL}}`, `{{GITHUB_USER}}`, `{{GITHUB_URL}}` (from `buildPostTemplateVars` in `utils.js`).
-
-Fragments may reference external assets, e.g. `<script src="{{BASE_URL}}/js/your-file.js"></script>`. Inline `<script>` is allowed (trusted local files, same model as templates).
-
-Append minimal styles to `assets/css/style.css` (do not replace existing rules):
-```css
-.post-body .agent-context {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  clip-path: inset(50%) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  z-index: -1 !important;
-}
-/* Visible top-of-body author/source (human-readable) */
-.post-body-meta {
-  margin: 0 0 1.25rem;
-  padding: 0.5rem 0 0.75rem;
-  border-bottom: 1px dashed var(--border);
-  font-size: 0.82rem;
-  color: var(--muted);
-  line-height: 1.6;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-}
-/* Attribution/footer inside .agent-context: hidden from humans */
-.post-body .agent-context .post-body-attribution,
-.post-body .agent-context .post-footer {
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-```
-
-**Out of scope for this version:** per-post custom fragment paths (`headerFile` / `footerFile` front-matter). Only global fragments + per-post boolean opt-out.
+**Out of scope:** per-post custom fragment paths. Only global fragments + `header: false` / `footer: false` opt-out.
 
 ### 4.2 Agent-readable Markdown mirrors (static attribution)
 
@@ -342,7 +275,7 @@ Controlled by `agentMarkdown` (default `true`). Set `false` to disable all three
 
 `parseMarkdownFile` must also return raw `content` (Markdown body string) for mirror generation.
 
-> **Limitation:** Unlike TIME's live edge routing, static GitHub Pages cannot serve different HTML vs. Markdown per User-Agent at request time. Markdown mirrors and `llms.txt` are the most reliable agent path. Hidden `.agent-context` blocks (header, body attribution, footer) help raw HTML crawlers but may be stripped by readability extractors; the visible `post-body-meta` is what humans see.
+> **Limitation:** Static GitHub Pages cannot serve different HTML vs. Markdown per User-Agent. `.md` mirrors and `llms.txt` are the most reliable path; `.agent-camouflage` HTML is a bonus channel for Jina-style extractors.
 
 
 ---
@@ -2071,9 +2004,9 @@ swp-cli deploy --force   # push even when docs/ output is unchanged
     - Deliberately set `deployTarget` to a non-existent repo URL and run once, verify the command catches the error and prints a readable message instead of throwing an unhandled exception that crashes the process without any output.
 22. After all verifications pass, enable GitHub Pages in the Pages repo's (`<user>.github.io`) Settings (Source: `main` branch root; only needs to be done once; every subsequent `deploy` will auto-update).
 23. Test gist-sync: after configuring `githubUser` in `blog.config.json`, run `node scripts/cli.js gist-sync`, verify that posts with `gist_id` front-matter are generated under `source/_posts/` and `docs/` is rebuilt; run again and verify it outputs "Updated N posts" instead of adding duplicates; delete a gist on GitHub and run again, verify the corresponding local post is deleted.
-24. Test post header/footer: run `node scripts/cli.js build`, verify post HTML contains `.post-footer` inside `.agent-context` (hidden, not visible to humans) and homepage has no footer fragment; add `header: false` / `footer: false` to one post and rebuild — that post omits fragments while others keep them; confirm `posts.json` excerpts exclude footer text; run incremental `render` on a post and confirm same behavior; temporarily rename `post-header.html` and rebuild — expect a console warning, successful build, empty header.
+24. Test post header/footer: run `node scripts/cli.js build`, verify post HTML contains `.agent-camouflage` blocks and visible `.post-body-meta`; homepage has no fragments; `header: false` / `footer: false` opt out per post; excerpts exclude fragment text.
 25. Test agent Markdown: run `node scripts/cli.js build`, verify each post has `docs/posts/<slug>.md`, `docs/llms.txt` exists and lists mirrors, post HTML `<head>` contains `rel="alternate" type="text/markdown"`; set `agentMarkdown: false` and rebuild — `.md` mirrors, `llms.txt`, and alternate links are absent; run incremental `render` and confirm `llms.txt` updates.
-26. Test body author/source attribution: run `node scripts/cli.js build`, verify post HTML `.post-body` contains visible `.post-body-meta` at the top and hidden `.agent-context` blocks for body attribution and footer (`data-purpose="body-attribution"`, `data-purpose="post-footer"`); `.md` mirrors start body with `author:` / `source:` lines; set `footer: false` on one post and rebuild — that post omits body meta, body attribution, and footer; run `bash scripts/test-attribution.sh` against local `serve` or deployed site.
+26. Test body author/source attribution: verify `.post-body-meta` (visible) and `.agent-camouflage` blocks (header + body-attribution); `.md` mirrors have `author:` / `source:` lines; `footer: false` opts out; run `bash scripts/test-attribution.sh`.
 
 ---
 
@@ -2096,7 +2029,7 @@ swp-cli deploy --force   # push even when docs/ output is unchanged
 - [ ] `swp-cli gist-sync` (or `node scripts/cli.js gist-sync`) can fetch all public gists of `githubUser` that contain Markdown files, generate posts with `gist_id`, `header`, `footer`, `author`, and `source` front-matter into `source/_posts/`, and rebuild; when a gist is deleted, the corresponding local post is cleaned up.
 - [ ] Post pages inject global header/footer HTML from `source/_includes/` (configurable via `postHeader` / `postFooter`); per-post `header: false` / `footer: false` opts out; excerpts exclude fragment text; missing include files warn and continue.
 - [ ] When `agentMarkdown` is enabled: each post outputs `docs/posts/<slug>.md`, `docs/llms.txt` is regenerated on build/render, and post pages include `<link rel="alternate" type="text/markdown">`; setting `agentMarkdown: false` disables all three.
-- [ ] Post-body attribution: `.post-body-meta` is human-visible; `.post-body-attribution` and `.post-footer` are inside `.agent-context` (hidden from humans, in DOM for scrapers); `footer: false` opts out of body meta, attribution, and footer; `.md` mirrors prepend `author:` / `source:` lines; front-matter overrides site defaults; `new` and `gist-sync` scaffold all four fields; `scripts/test-attribution.sh` passes hard assertions after deploy.
+- [ ] Post-body attribution: `.post-body-meta` human-visible; header and body-attribution use `.agent-camouflage`; `post-footer.html` empty; `footer: false` opts out; `.md` mirrors prepend `author:` / `source:`; `scripts/test-attribution.sh` passes after deploy.
 
 ---
 

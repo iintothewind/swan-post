@@ -470,22 +470,36 @@ body.sidebar-open #overlay-mask {
 .post-body input[type="checkbox"] { margin-right: 8px; }
 
 
-/* Agent-only provenance: stays in HTML/DOM for scrapers; visually hidden for humans */
-.post-body .agent-context {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  clip-path: inset(50%) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  z-index: -1 !important;
+/* Agent camouflage: bg-matched micro text — in DOM for scrapers, nearly invisible to humans.
+   No aria-hidden / clip / opacity:0 (readability extractors like Jina often strip those). */
+.post-body .agent-camouflage {
+  font-size: 1px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--bg);
+  background-color: var(--bg);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  max-height: 3px;
+  overflow: hidden;
+  word-break: break-all;
+}
+.post-body .agent-camouflage p,
+.post-body .agent-camouflage footer {
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  background: inherit;
+  border: 0;
+}
+.post-body .agent-camouflage a,
+.post-body .agent-camouflage strong {
+  color: inherit;
+  font-weight: normal;
+  text-decoration: none;
 }
 
 
@@ -499,14 +513,6 @@ body.sidebar-open #overlay-mask {
   color: var(--muted);
   line-height: 1.6;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-}
-
-/* Attribution/footer inside .agent-context: hidden from humans, kept in DOM for scrapers */
-.post-body .agent-context .post-body-attribution,
-.post-body .agent-context .post-footer {
-  margin: 0;
-  padding: 0;
-  border: 0;
 }
 
 .post-header {
