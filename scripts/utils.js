@@ -98,6 +98,37 @@ showFooter: data.footer !== false
 
 
 
+
+function getPostAuthor(config) {
+return config.postAuthor || config.author || "";
+}
+
+function getPostSource(config) {
+if (config.postSource) return String(config.postSource);
+const site = getSiteUrl(config);
+return site ? site.replace(/\/$/, "") + "/" : "";
+}
+
+function buildPostTemplateVars(config, post) {
+return {
+SITE_TITLE: config.title || "",
+SITE_AUTHOR: config.author || "",
+SITE_DESCRIPTION: config.description || "",
+BASE_URL: config.baseUrl || "",
+SITE_URL: getSiteUrl(config),
+POST_AUTHOR: getPostAuthor(config),
+POST_SOURCE: getPostSource(config),
+POST_TITLE: post.title,
+POST_DATE: post.formattedDate,
+POST_SLUG: post.slug,
+POST_TAGS_HTML: renderTagsHtml(post.tags),
+CANONICAL_URL: getPostCanonicalUrl(config, post.slug),
+GITHUB_USER: config.githubUser || "",
+GITHUB_URL: config.githubUser ? "https://github.com/" + config.githubUser : ""
+};
+}
+
+
 function getSiteUrl(config) {
 if (config.siteUrl) return String(config.siteUrl).replace(/\/$/, "");
 if (config.githubUser) return "https://" + config.githubUser + ".github.io";
@@ -121,21 +152,12 @@ if (config.agentMarkdown === false) return "";
 const templatePath = config.agentAttribution || "source/_includes/agent-attribution.md";
 const template = loadPostIncludeFile(templatePath);
 const tags = Array.isArray(post.tags) ? post.tags.join(", ") : "";
-const header = renderTemplate(template, {
-SITE_TITLE: config.title || "",
-SITE_AUTHOR: config.author || "",
-SITE_DESCRIPTION: config.description || "",
-SITE_URL: getSiteUrl(config),
-GITHUB_USER: config.githubUser || "",
-GITHUB_URL: config.githubUser ? "https://github.com/" + config.githubUser : "",
-CANONICAL_URL: getPostCanonicalUrl(config, post.slug),
-POST_TITLE: post.title,
-POST_DATE: post.formattedDate,
-POST_SLUG: post.slug,
-POST_TAGS: tags
-});
-const footer = "\n---\n\n> © " + (config.author || "") + " · " + getSiteUrl(config) + "\n";
-return header + "\n" + (post.content || "").trim() + footer;
+const templateVars = buildPostTemplateVars(config, post);
+templateVars.POST_TAGS = tags;
+const header = renderTemplate(template, templateVars);
+const bodyMeta = "author: " + getPostAuthor(config) + "\nsource: " + getPostSource(config) + "\n\n";
+const footer = "\n---\n\n> © " + getPostAuthor(config) + " · " + getSiteUrl(config) + "\n";
+return header + "\n" + bodyMeta + (post.content || "").trim() + footer;
 }
 
 function writeAgentMarkdownFile(docsDir, post, markdown) {
@@ -204,23 +226,14 @@ return content || "";
 function buildPostIncludes(config, post) {
 const headerPath = config.postHeader || "source/_includes/post-header.html";
 const footerPath = config.postFooter || "source/_includes/post-footer.html";
+const bodyMetaPath = config.postBodyMeta || "source/_includes/post-body-meta.html";
 const bodyAttributionPath = config.postBodyAttribution || "source/_includes/post-body-attribution.html";
-const templateVars = {
-SITE_TITLE: config.title || "",
-SITE_AUTHOR: config.author || "",
-SITE_DESCRIPTION: config.description || "",
-BASE_URL: config.baseUrl || "",
-SITE_URL: getSiteUrl(config),
-POST_TITLE: post.title,
-POST_DATE: post.formattedDate,
-POST_SLUG: post.slug,
-POST_TAGS_HTML: renderTagsHtml(post.tags),
-CANONICAL_URL: getPostCanonicalUrl(config, post.slug),
-GITHUB_USER: config.githubUser || "",
-GITHUB_URL: config.githubUser ? "https://github.com/" + config.githubUser : ""
-};
+const templateVars = buildPostTemplateVars(config, post);
 const headerHtml = post.showHeader
 ? renderTemplate(loadPostIncludeFile(headerPath), templateVars)
+: "";
+const bodyMetaHtml = post.showFooter
+? renderTemplate(loadPostIncludeFile(bodyMetaPath), templateVars)
 : "";
 const footerHtml = post.showFooter
 ? renderTemplate(loadPostIncludeFile(footerPath), templateVars)
@@ -228,7 +241,7 @@ const footerHtml = post.showFooter
 const bodyAttributionHtml = post.showFooter
 ? renderTemplate(loadPostIncludeFile(bodyAttributionPath), templateVars)
 : "";
-return { headerHtml, footerHtml, bodyAttributionHtml };
+return { headerHtml, bodyMetaHtml, footerHtml, bodyAttributionHtml };
 }
 
 // Simple placeholder substitution: template is a template string, vars is a { KEY: value } object.
@@ -343,6 +356,6 @@ loadConfig, copyStaticAssets, parseMarkdownFile, renderTemplate, listPostFiles,
 renderTagsHtml, sortPostsByDateDesc, renderRecentPostsHtml,
 loadPostsIndex, savePostsIndex,
 resolvePostIncludeFlags, loadPostIncludeFile, buildPostIncludes,
-getSiteUrl, getPostCanonicalUrl, getPostMarkdownUrl,
+getPostAuthor, getPostSource, buildPostTemplateVars, getSiteUrl, getPostCanonicalUrl, getPostMarkdownUrl,
 buildAgentMarkdown, writeAgentMarkdownFile, renderLlmsTxt, writeLlmsTxt, renderPostAlternateLink
 };

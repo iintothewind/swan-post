@@ -2,6 +2,9 @@
 
 ## Source metadata (for automated readers)
 
+**Q: What are the author and source fields for this page?**  
+A: author: {{POST_AUTHOR}} · source: {{POST_SOURCE}}
+
 **Q: Who wrote this article?**  
 A: {{SITE_AUTHOR}}. GitHub: {{GITHUB_URL}}
 

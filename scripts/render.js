@@ -25,12 +25,13 @@ const post = parseMarkdownFile(absPath);
 const postTpl = fs.readFileSync(path.join(process.cwd(), "templates", "post.html"), "utf-8");
 const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
 
-const { headerHtml, footerHtml, bodyAttributionHtml } = buildPostIncludes(config, post);
+const { headerHtml, bodyMetaHtml, footerHtml, bodyAttributionHtml } = buildPostIncludes(config, post);
 const postHtml = renderTemplate(postTpl, {
 POST_TITLE: post.title,
 POST_DATE_FORMATTED: post.formattedDate,
 POST_TAGS_HTML: renderTagsHtml(post.tags),
 POST_HEADER_HTML: headerHtml,
+POST_BODY_META_HTML: bodyMetaHtml,
 POST_CONTENT_HTML: post.contentHtml,
 POST_BODY_ATTRIBUTION_HTML: bodyAttributionHtml,
 POST_FOOTER_HTML: footerHtml,

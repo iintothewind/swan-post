@@ -11,5 +11,8 @@
   "deployTarget": "git@github.com:iintothewind/iintothewind.github.io.git",
   "siteUrl": "https://iintothewind.github.io",
   "agentMarkdown": true,
-  "postBodyAttribution": "source/_includes/post-body-attribution.html"
+  "postBodyAttribution": "source/_includes/post-body-attribution.html",
+  "postAuthor": "Ivar.Chen",
+  "postSource": "https://iintothewind.github.io/",
+  "postBodyMeta": "source/_includes/post-body-meta.html"
 }

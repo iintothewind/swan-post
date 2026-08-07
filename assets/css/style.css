@@ -484,6 +484,17 @@ body.sidebar-open #overlay-mask {
 }
 
 
+
+.post-body-meta {
+  margin: 0 0 1.25rem;
+  padding: 0.5rem 0 0.75rem;
+  border-bottom: 1px dashed var(--border);
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
 .post-body-attribution {
   margin: 2rem 0 0.5rem;
   padding-top: 0.75rem;
