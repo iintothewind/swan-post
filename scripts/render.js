@@ -3,7 +3,8 @@ const path = require("path");
 const {
 loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
 renderTagsHtml, loadPostsIndex, savePostsIndex, buildPostIncludes,
-buildAgentMarkdown, writeAgentMarkdownFile, writeLlmsTxt, renderPostAlternateLink
+buildAgentMarkdown, writeAgentMarkdownFile, writeLlmsTxt, renderPostAlternateLink,
+writeRobotsTxt, writeSitemapXml
 } = require("./utils");
 const { renderHomepage } = require("./build");
 
@@ -75,6 +76,8 @@ const sortedIndex = savePostsIndex(index);
 // the sidebar but invisible in the homepage body area.
 renderHomepage(config, sortedIndex);
 writeLlmsTxt(docsDir, config, sortedIndex);
+writeRobotsTxt(docsDir, config);
+writeSitemapXml(docsDir, config, sortedIndex);
 
 console.log(`Rendered: ${outputPath}`);
 console.log(`Index updated: docs/posts.json`);

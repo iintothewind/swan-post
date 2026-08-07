@@ -3,7 +3,8 @@ const path = require("path");
 const {
 loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
 listPostFiles, renderTagsHtml, renderRecentPostsHtml, savePostsIndex, buildPostIncludes,
-buildAgentMarkdown, writeAgentMarkdownFile, writeLlmsTxt, renderPostAlternateLink
+buildAgentMarkdown, writeAgentMarkdownFile, writeLlmsTxt, renderPostAlternateLink,
+writeRobotsTxt, writeSitemapXml
 } = require("./utils");
 
 // Generate the homepage docs/index.html.
@@ -100,6 +101,10 @@ renderHomepage(config, sortedIndex);
 
 // 8. Agent-readable Markdown mirrors + llms.txt (static GitHub Pages; no UA routing)
 writeLlmsTxt(docsDir, config, sortedIndex);
+
+// 9. Crawler discovery: allow full-site crawl + sitemap
+writeRobotsTxt(docsDir, config);
+writeSitemapXml(docsDir, config, sortedIndex);
 
 console.log(`Build complete, ${posts.length} posts, output to docs/`);
 }

@@ -192,6 +192,48 @@ const outPath = path.join(docsDir, "posts", post.slug + ".md");
 fs.writeFileSync(outPath, markdown, "utf-8");
 }
 
+// Build llms.txt entries from every source/_posts/*.md file (authoritative list).
+function resolveLlmsEntries(docsDir, postsIndex) {
+const sourceDir = path.join(process.cwd(), "source", "_posts");
+if (fs.existsSync(sourceDir)) {
+const files = listPostFiles();
+if (files.length > 0) {
+return sortPostsByDateDesc(files.map(parseMarkdownFile).map((post) => ({
+title: post.title,
+slug: post.slug,
+date: post.date,
+excerpt: post.excerpt
+})));
+}
+}
+const bySlug = new Map();
+postsIndex.forEach((post) => bySlug.set(post.slug, post));
+const postsDir = path.join(docsDir, "posts");
+if (fs.existsSync(postsDir)) {
+fs.readdirSync(postsDir)
+.filter((f) => f.endsWith(".md"))
+.forEach((f) => {
+const slug = f.slice(0, -3);
+if (!bySlug.has(slug)) {
+console.warn(`llms.txt: adding orphan .md mirror not in posts.json: ${slug}`);
+bySlug.set(slug, { slug, title: slug, excerpt: "" });
+}
+});
+}
+const ordered = [];
+const seen = new Set();
+postsIndex.forEach((post) => {
+if (bySlug.has(post.slug)) {
+ordered.push(bySlug.get(post.slug));
+seen.add(post.slug);
+}
+});
+bySlug.forEach((post, slug) => {
+if (!seen.has(slug)) ordered.push(post);
+});
+return ordered;
+}
+
 function renderLlmsTxt(config, postsIndex) {
 const site = getSiteUrl(config);
 const base = String(config.baseUrl || "").replace(/\/$/, "");
@@ -207,7 +249,7 @@ const lines = [
 "## Agent-readable Markdown mirrors",
 "Each post is also published as Markdown for automated readers:",
 "",
-"## Posts"
+"## Posts (" + postsIndex.length + ")"
 ];
 postsIndex.forEach((post) => {
 const mdUrl = site + base + "/posts/" + post.slug + ".md";
@@ -221,8 +263,105 @@ return lines.join("\n");
 
 function writeLlmsTxt(docsDir, config, postsIndex) {
 if (config.agentMarkdown === false) return;
-const txt = renderLlmsTxt(config, postsIndex);
+const entries = resolveLlmsEntries(docsDir, postsIndex);
+const postsDir = path.join(docsDir, "posts");
+entries.forEach((post) => {
+const mdPath = path.join(postsDir, post.slug + ".md");
+if (!fs.existsSync(mdPath)) {
+console.warn(`llms.txt: source post listed but .md mirror missing (run build/render): ${post.slug}`);
+}
+});
+const txt = renderLlmsTxt(config, entries);
 fs.writeFileSync(path.join(docsDir, "llms.txt"), txt, "utf-8");
+}
+
+function getBasePath(config) {
+return String(config.baseUrl || "").replace(/\/$/, "");
+}
+
+function buildAbsoluteUrl(config, relPath) {
+const site = getSiteUrl(config);
+const base = getBasePath(config);
+const normalized = relPath.startsWith("/") ? relPath : "/" + relPath;
+return site + base + normalized;
+}
+
+function escapeXml(text) {
+return String(text)
+.replace(/&/g, "&amp;")
+.replace(/</g, "&lt;")
+.replace(/>/g, "&gt;")
+.replace(/"/g, "&quot;")
+.replace(/'/g, "&apos;");
+}
+
+function toSitemapLastmod(dateValue) {
+if (!dateValue) return "";
+const d = new Date(dateValue);
+if (Number.isNaN(d.getTime())) return "";
+return d.toISOString().slice(0, 10);
+}
+
+function renderRobotsTxt(config) {
+const sitemapUrl = buildAbsoluteUrl(config, "/sitemap.xml");
+return [
+"User-agent: *",
+"Allow: /",
+"",
+"Sitemap: " + sitemapUrl,
+""
+].join("\n");
+}
+
+function renderSitemapXml(config, postsIndex) {
+const urls = [
+{ loc: buildAbsoluteUrl(config, "/"), changefreq: "daily", priority: "1.0" }
+];
+postsIndex.forEach((post) => {
+urls.push({
+loc: getPostCanonicalUrl(config, post.slug),
+lastmod: toSitemapLastmod(post.date),
+changefreq: "monthly",
+priority: "0.8"
+});
+});
+if (config.agentMarkdown !== false) {
+urls.push({
+loc: buildAbsoluteUrl(config, "/llms.txt"),
+changefreq: "weekly",
+priority: "0.6"
+});
+postsIndex.forEach((post) => {
+urls.push({
+loc: getPostMarkdownUrl(config, post.slug),
+lastmod: toSitemapLastmod(post.date),
+changefreq: "monthly",
+priority: "0.5"
+});
+});
+}
+const body = urls.map((entry) => {
+let chunk = "  <url>\n    <loc>" + escapeXml(entry.loc) + "</loc>";
+if (entry.lastmod) chunk += "\n    <lastmod>" + entry.lastmod + "</lastmod>";
+if (entry.changefreq) chunk += "\n    <changefreq>" + entry.changefreq + "</changefreq>";
+if (entry.priority) chunk += "\n    <priority>" + entry.priority + "</priority>";
+chunk += "\n  </url>";
+return chunk;
+}).join("\n");
+return '<?xml version="1.0" encoding="UTF-8"?>\n'
++ '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
++ body + "\n"
++ "</urlset>\n";
+}
+
+function writeRobotsTxt(docsDir, config) {
+const txt = renderRobotsTxt(config);
+fs.writeFileSync(path.join(docsDir, "robots.txt"), txt, "utf-8");
+}
+
+function writeSitemapXml(docsDir, config, postsIndex) {
+const xml = renderSitemapXml(config, postsIndex);
+fs.writeFileSync(path.join(docsDir, "sitemap.xml"), xml, "utf-8");
 }
 
 function renderPostAlternateLink(config, slug) {
@@ -383,5 +522,6 @@ renderTagsHtml, sortPostsByDateDesc, renderRecentPostsHtml,
 loadPostsIndex, savePostsIndex,
 resolvePostIncludeFlags, loadPostIncludeFile, buildPostIncludes,
 getDefaultPostAuthor, getDefaultPostSource, getPostAuthor, getPostSource, formatPostAttributionFrontMatter, buildPostTemplateVars, getSiteUrl, getPostCanonicalUrl, getPostMarkdownUrl,
-buildAgentMarkdown, writeAgentMarkdownFile, renderLlmsTxt, writeLlmsTxt, renderPostAlternateLink
+buildAgentMarkdown, writeAgentMarkdownFile, renderLlmsTxt, writeLlmsTxt, renderPostAlternateLink,
+renderRobotsTxt, renderSitemapXml, writeRobotsTxt, writeSitemapXml
 };

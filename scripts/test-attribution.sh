@@ -54,6 +54,19 @@ else
   fail "llms.txt missing Attribution or author"
 fi
 
+if [[ -f docs/posts.json ]]; then
+  POSTS_JSON_COUNT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/posts.json','utf8')).length)")
+  LLMS_MD_COUNT=$(echo "$LLMS" | rg -o '/posts/[^)]+.md' | wc -l | tr -d ' ')
+  SOURCE_MD_COUNT=$(ls source/_posts/*.md 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$LLMS_MD_COUNT" -eq "$POSTS_JSON_COUNT" && "$LLMS_MD_COUNT" -eq "$SOURCE_MD_COUNT" ]]; then
+    pass "llms.txt indexes all ${LLMS_MD_COUNT} post .md mirrors (matches posts.json and source/_posts)"
+  else
+    fail "llms.txt md index count mismatch: llms=${LLMS_MD_COUNT}, posts.json=${POSTS_JSON_COUNT}, source=${SOURCE_MD_COUNT}"
+  fi
+else
+  warn "docs/posts.json not found; skipping llms.txt completeness check"
+fi
+
 if contains "$MD" "Source metadata" && contains "$MD" "$AUTHOR"; then
   pass ".md mirror has FAQ attribution header"
 else
