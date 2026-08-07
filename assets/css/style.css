@@ -6,6 +6,10 @@
 
 :root {
   --sidebar-width: 300px;
+  --content-max-width: 720px;
+  --content-padding-x: 28px;
+  --content-padding-top: 96px;
+  --content-padding-bottom: 80px;
   --accent: #9a3324;            /* Classic newspaper ochre red */
   --accent-soft: #f4e8e4;       /* Light red background (hover / inline code) */
   --text: #24211c;              /* Print ink color */
@@ -205,9 +209,10 @@ body.sidebar-open #overlay-mask {
 
 /* ---------- Main content area ---------- */
 #content {
-  max-width: 720px;
+  width: 100%;
+  max-width: var(--content-max-width);
   margin: 0 auto;
-  padding: 96px 28px 80px;
+  padding: var(--content-padding-top) var(--content-padding-x) var(--content-padding-bottom);
 }
 
 /* ---------- Post page ---------- */
@@ -510,11 +515,77 @@ body.sidebar-open #overlay-mask {
   border-bottom: 1px solid var(--border, #ddd);
 }
 
-/* ---------- Responsive: narrow screen ---------- */
-@media (max-width: 640px) {
-  #content {
-    padding: 72px 20px 60px;
+/* ---------- Responsive layout ---------- */
+
+/* Tablet: slightly wider column + fluid side padding */
+@media (min-width: 641px) {
+  :root {
+    --content-max-width: clamp(720px, 78vw, 800px);
+    --content-padding-x: clamp(28px, 4vw, 40px);
   }
+}
+
+/* Desktop: pin sidebar, content uses remaining width with readable cap */
+@media (min-width: 1024px) {
+  :root {
+    --content-max-width: clamp(760px, 52vw, 920px);
+    --content-padding-x: clamp(40px, 5vw, 64px);
+    --content-padding-top: 72px;
+  }
+
+  body {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    grid-template-rows: 1fr;
+    min-height: 100vh;
+  }
+
+  #sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    transform: translateX(0);
+    padding-top: 28px;
+  }
+
+  #sidebar-toggle,
+  #overlay-mask {
+    display: none !important;
+  }
+
+  body.sidebar-open #overlay-mask {
+    display: none !important;
+  }
+
+  #content {
+    max-width: min(var(--content-max-width), calc(100vw - var(--sidebar-width) - 2 * var(--content-padding-x)));
+  }
+}
+
+/* Large desktop / high-DPI wide screens */
+@media (min-width: 1440px) {
+  :root {
+    --sidebar-width: 320px;
+    --content-max-width: clamp(820px, 48vw, 980px);
+  }
+}
+
+@media (min-width: 1920px) {
+  :root {
+    --content-max-width: clamp(860px, 44vw, 1040px);
+    --content-padding-x: clamp(48px, 4vw, 80px);
+  }
+}
+
+/* Narrow screen: tighter padding, smaller headings */
+@media (max-width: 640px) {
+  :root {
+    --content-max-width: 100%;
+    --content-padding-x: 20px;
+    --content-padding-top: 72px;
+    --content-padding-bottom: 60px;
+  }
+
   .post h1 { font-size: 1.7rem; }
   .home h1 { font-size: 2rem; }
 }
