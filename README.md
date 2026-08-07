@@ -245,9 +245,9 @@ npm test
 **Verify attribution channels** after deploy:
 
 ```bash
-bash scripts/test-attribution.sh
+bash test/test-attribution.sh
 # or against local preview:
-SITE_URL=http://localhost:8080 bash scripts/test-attribution.sh
+SITE_URL=http://localhost:8080 bash test/test-attribution.sh
 ```
 
 Hard assertions: `rel="alternate"`, `llms.txt`, `robots.txt`, `sitemap.xml`, `.md` mirrors, `.post-body-meta`, `.agent-camouflage`. Jina(HTML) extraction is reported as a soft signal.
@@ -349,8 +349,11 @@ swan-post/
 │   ├── css/
 │   └── js/
 ├── scripts/
+├── test/                   # All tests (unit + acceptance)
 │   ├── test-attribution.sh # Attribution + crawler acceptance tests (D1–D5)
-│   └── test-discovery.js   # Unit tests for robots.txt / sitemap.xml helpers
+│   ├── test-discovery.js   # Unit tests for robots.txt / sitemap.xml helpers
+│   ├── test-markdown.js    # Unit tests for markdown helpers
+│   └── test-templates.js   # Unit tests for template engine
 ├── .deploy/ # Pages repo temporary clone (auto-generated, gitignored)
 ├── docs/    # Build output (gitignored, pushed to Pages repo via deploy)
 │   ├── llms.txt            # Agent-readable site index (when agentMarkdown is on)

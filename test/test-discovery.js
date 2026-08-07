@@ -7,7 +7,7 @@ const {
   renderRobotsTxt,
   renderSitemapXml,
   buildAbsoluteUrl,
-} = require("./utils");
+} = require("../scripts/utils");
 
 const config = {
   siteUrl: "https://example.com",

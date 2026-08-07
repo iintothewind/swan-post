@@ -2,7 +2,7 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { renderTagsHtml, renderRecentPostsHtml, truncateGraphemes } = require("./lib/markdown");
+const { renderTagsHtml, renderRecentPostsHtml, truncateGraphemes } = require("../scripts/lib/markdown");
 
 describe("renderTagsHtml", () => {
   it("renders tags as pill spans", () => {

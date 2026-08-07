@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Attribution channel acceptance tests (D1-D5).
 # Usage:
-#   bash scripts/test-attribution.sh
-#   SITE_URL=http://localhost:8080 TEST_SLUG=my-post bash scripts/test-attribution.sh
+#   bash test/test-attribution.sh
+#   SITE_URL=http://localhost:8080 TEST_SLUG=my-post bash test/test-attribution.sh
 #
 # Hard failures (exit 1): .md mirror, llms.txt, rel=alternate, built HTML structure.
 # Soft signals (report only): Jina/trafilatura HTML author extraction.

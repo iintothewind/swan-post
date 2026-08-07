@@ -2,8 +2,8 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { renderTemplate, buildPostTemplateVars, buildPostIncludes } = require("./lib/templates");
-const { getSiteUrl } = require("./lib/config");
+const { renderTemplate, buildPostTemplateVars, buildPostIncludes } = require("../scripts/lib/templates");
+const { getSiteUrl } = require("../scripts/lib/config");
 
 const config = {
   title: "Test Blog",

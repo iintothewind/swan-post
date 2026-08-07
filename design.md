@@ -160,10 +160,11 @@ swan-post/
 │   │   ├── config.js, posts-index.js, static-assets.js
 │   │   ├── post-entry.js, markdown.js, attribution.js
 │   │   ├── templates.js, agent-mirrors.js, discovery-artifacts.js
-│   ├── test-attribution.sh   # Acceptance (D1–D5 + crawler)
-│   ├── test-discovery.js     # Unit tests (robots/sitemap helpers)
-│   ├── test-markdown.js      # Unit tests (markdown rendering)
-│   └── test-templates.js     # Unit tests (template engine)
+│   └── test/                  # All tests (unit + acceptance)
+│       ├── test-attribution.sh # Acceptance (D1–D5 + crawler)
+│       ├── test-discovery.js   # Unit tests (robots/sitemap helpers)
+│       ├── test-markdown.js    # Unit tests (markdown rendering)
+│       └── test-templates.js   # Unit tests (template engine)
 └── docs/                    # Build output (gitignored; pushed via deploy)
     ├── index.html, posts.json
     ├── llms.txt, robots.txt, sitemap.xml
@@ -361,7 +362,7 @@ Fetch user gists → first `.md` file each → write `YYYY-MM-DD-<gist_id>.md` �
 | `deploy [-m msg] [-f]` | Build + push to Pages repo |
 | `gist-sync [-u user]` | Sync gists → build |
 
-`npm test` = build + `node --test scripts/test-discovery.js` + `bash scripts/test-attribution.sh`.
+`npm test` = build + `node --test test/test-discovery.js test/test-markdown.js test/test-templates.js` + `bash test/test-attribution.sh`.
 
 ---
 
