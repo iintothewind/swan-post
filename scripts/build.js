@@ -3,8 +3,8 @@ const path = require("path");
 const {
 loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
 listPostFiles, renderTagsHtml, renderRecentPostsHtml, savePostsIndex, buildPostIncludes,
-buildAgentMarkdown, writeAgentMarkdownFile, writeLlmsTxt, renderPostAlternateLink,
-writeRobotsTxt, writeSitemapXml
+buildAgentMarkdown, writeAgentMarkdownFile, renderPostAlternateLink,
+writeSiteDiscoveryArtifacts
 } = require("./utils");
 
 // Generate the homepage docs/index.html.
@@ -99,12 +99,8 @@ const sortedIndex = savePostsIndex(postsIndex);
 // 7. Use the sorted index to generate the homepage (the homepage body shows the most recent N posts, where N comes from blog.config.json's recentPostsCount)
 renderHomepage(config, sortedIndex);
 
-// 8. Agent-readable Markdown mirrors + llms.txt (static GitHub Pages; no UA routing)
-writeLlmsTxt(docsDir, config, sortedIndex);
-
-// 9. Crawler discovery: allow full-site crawl + sitemap
-writeRobotsTxt(docsDir, config);
-writeSitemapXml(docsDir, config, sortedIndex);
+// 8. Agent-readable mirrors + crawler discovery (llms.txt, robots.txt, sitemap.xml)
+writeSiteDiscoveryArtifacts(docsDir, config, sortedIndex);
 
 console.log(`Build complete, ${posts.length} posts, output to docs/`);
 }

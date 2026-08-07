@@ -3,8 +3,8 @@ const path = require("path");
 const {
 loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
 renderTagsHtml, loadPostsIndex, savePostsIndex, buildPostIncludes,
-buildAgentMarkdown, writeAgentMarkdownFile, writeLlmsTxt, renderPostAlternateLink,
-writeRobotsTxt, writeSitemapXml
+buildAgentMarkdown, writeAgentMarkdownFile, renderPostAlternateLink,
+writeSiteDiscoveryArtifacts
 } = require("./utils");
 const { renderHomepage } = require("./build");
 
@@ -75,9 +75,7 @@ const sortedIndex = savePostsIndex(index);
 // "recent N posts" list; without regenerating the homepage, the new post would be reachable from
 // the sidebar but invisible in the homepage body area.
 renderHomepage(config, sortedIndex);
-writeLlmsTxt(docsDir, config, sortedIndex);
-writeRobotsTxt(docsDir, config);
-writeSitemapXml(docsDir, config, sortedIndex);
+writeSiteDiscoveryArtifacts(docsDir, config, sortedIndex);
 
 console.log(`Rendered: ${outputPath}`);
 console.log(`Index updated: docs/posts.json`);

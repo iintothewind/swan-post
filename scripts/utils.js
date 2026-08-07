@@ -161,16 +161,23 @@ if (config.githubUser) return "https://" + config.githubUser + ".github.io";
 return "";
 }
 
-function getPostCanonicalUrl(config, slug) {
+function getBasePath(config) {
+return String(config.baseUrl || "").replace(/\/$/, "");
+}
+
+function buildAbsoluteUrl(config, relPath) {
 const site = getSiteUrl(config);
-const base = String(config.baseUrl || "").replace(/\/$/, "");
-return site + base + "/posts/" + slug + ".html";
+const base = getBasePath(config);
+const normalized = relPath.startsWith("/") ? relPath : "/" + relPath;
+return site + base + normalized;
+}
+
+function getPostCanonicalUrl(config, slug) {
+return buildAbsoluteUrl(config, "/posts/" + slug + ".html");
 }
 
 function getPostMarkdownUrl(config, slug) {
-const site = getSiteUrl(config);
-const base = String(config.baseUrl || "").replace(/\/$/, "");
-return site + base + "/posts/" + slug + ".md";
+return buildAbsoluteUrl(config, "/posts/" + slug + ".md");
 }
 
 function buildAgentMarkdown(config, post) {
@@ -234,9 +241,8 @@ if (!seen.has(slug)) ordered.push(post);
 return ordered;
 }
 
-function renderLlmsTxt(config, postsIndex) {
+function renderLlmsTxt(config, entries) {
 const site = getSiteUrl(config);
-const base = String(config.baseUrl || "").replace(/\/$/, "");
 const lines = [
 "# " + (config.title || "Blog"),
 "> " + (config.description || ""),
@@ -249,10 +255,10 @@ const lines = [
 "## Agent-readable Markdown mirrors",
 "Each post is also published as Markdown for automated readers:",
 "",
-"## Posts (" + postsIndex.length + ")"
+"## Posts (" + entries.length + ")"
 ];
-postsIndex.forEach((post) => {
-const mdUrl = site + base + "/posts/" + post.slug + ".md";
+entries.forEach((post) => {
+const mdUrl = getPostMarkdownUrl(config, post.slug);
 const title = post.title || post.slug;
 const excerpt = post.excerpt ? " — " + post.excerpt : "";
 lines.push("- [" + title + "](" + mdUrl + ")" + excerpt);
@@ -261,9 +267,7 @@ lines.push("");
 return lines.join("\n");
 }
 
-function writeLlmsTxt(docsDir, config, postsIndex) {
-if (config.agentMarkdown === false) return;
-const entries = resolveLlmsEntries(docsDir, postsIndex);
+function writeLlmsTxtFromEntries(docsDir, config, entries) {
 const postsDir = path.join(docsDir, "posts");
 entries.forEach((post) => {
 const mdPath = path.join(postsDir, post.slug + ".md");
@@ -275,15 +279,9 @@ const txt = renderLlmsTxt(config, entries);
 fs.writeFileSync(path.join(docsDir, "llms.txt"), txt, "utf-8");
 }
 
-function getBasePath(config) {
-return String(config.baseUrl || "").replace(/\/$/, "");
-}
-
-function buildAbsoluteUrl(config, relPath) {
-const site = getSiteUrl(config);
-const base = getBasePath(config);
-const normalized = relPath.startsWith("/") ? relPath : "/" + relPath;
-return site + base + normalized;
+function writeLlmsTxt(docsDir, config, postsIndex) {
+if (config.agentMarkdown === false) return;
+writeLlmsTxtFromEntries(docsDir, config, resolveLlmsEntries(docsDir, postsIndex));
 }
 
 function escapeXml(text) {
@@ -313,11 +311,11 @@ return [
 ].join("\n");
 }
 
-function renderSitemapXml(config, postsIndex) {
+function renderSitemapXml(config, entries) {
 const urls = [
 { loc: buildAbsoluteUrl(config, "/"), changefreq: "daily", priority: "1.0" }
 ];
-postsIndex.forEach((post) => {
+entries.forEach((post) => {
 urls.push({
 loc: getPostCanonicalUrl(config, post.slug),
 lastmod: toSitemapLastmod(post.date),
@@ -331,7 +329,7 @@ loc: buildAbsoluteUrl(config, "/llms.txt"),
 changefreq: "weekly",
 priority: "0.6"
 });
-postsIndex.forEach((post) => {
+entries.forEach((post) => {
 urls.push({
 loc: getPostMarkdownUrl(config, post.slug),
 lastmod: toSitemapLastmod(post.date),
@@ -359,9 +357,19 @@ const txt = renderRobotsTxt(config);
 fs.writeFileSync(path.join(docsDir, "robots.txt"), txt, "utf-8");
 }
 
-function writeSitemapXml(docsDir, config, postsIndex) {
-const xml = renderSitemapXml(config, postsIndex);
+function writeSitemapXml(docsDir, config, entries) {
+const xml = renderSitemapXml(config, entries);
 fs.writeFileSync(path.join(docsDir, "sitemap.xml"), xml, "utf-8");
+}
+
+// Regenerate llms.txt, robots.txt, and sitemap.xml (shared by build + render).
+function writeSiteDiscoveryArtifacts(docsDir, config, postsIndex) {
+const entries = resolveLlmsEntries(docsDir, postsIndex);
+if (config.agentMarkdown !== false) {
+writeLlmsTxtFromEntries(docsDir, config, entries);
+}
+writeRobotsTxt(docsDir, config);
+writeSitemapXml(docsDir, config, entries);
 }
 
 function renderPostAlternateLink(config, slug) {
@@ -523,5 +531,6 @@ loadPostsIndex, savePostsIndex,
 resolvePostIncludeFlags, loadPostIncludeFile, buildPostIncludes,
 getDefaultPostAuthor, getDefaultPostSource, getPostAuthor, getPostSource, formatPostAttributionFrontMatter, buildPostTemplateVars, getSiteUrl, getPostCanonicalUrl, getPostMarkdownUrl,
 buildAgentMarkdown, writeAgentMarkdownFile, renderLlmsTxt, writeLlmsTxt, renderPostAlternateLink,
-renderRobotsTxt, renderSitemapXml, writeRobotsTxt, writeSitemapXml
+renderRobotsTxt, renderSitemapXml, writeRobotsTxt, writeSitemapXml, writeSiteDiscoveryArtifacts,
+buildAbsoluteUrl, resolveLlmsEntries
 };
