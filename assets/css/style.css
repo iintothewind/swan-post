@@ -516,47 +516,12 @@ body.sidebar-open #overlay-mask {
 }
 
 /* ---------- Responsive layout ---------- */
-/* Sidebar stays overlay drawer on all breakpoints (hidden until ☰). Only content width scales. */
+/* Sidebar stays overlay drawer on all breakpoints (hidden until ☰). Content = 50vw, max 2400px. */
 
-@media (min-width: 768px) {
+@media (min-width: 641px) {
   :root {
-    --content-max-width: 800px;
-    --content-padding-x: clamp(28px, 4vw, 48px);
-  }
-}
-
-@media (min-width: 1200px) {
-  :root {
-    --content-max-width: 960px;
-    --content-padding-x: clamp(40px, 5vw, 72px);
-  }
-}
-
-@media (min-width: 1600px) {
-  :root {
-    --content-max-width: 1100px;
-    --content-padding-x: clamp(48px, 4vw, 96px);
-  }
-}
-
-@media (min-width: 1920px) {
-  :root {
-    /* Fluid between 1200px and 1600px on large/4K viewports */
-    --content-max-width: clamp(1200px, 42vw, 1600px);
-    --content-padding-x: clamp(56px, 5vw, 120px);
-  }
-}
-
-@media (min-width: 2560px) {
-  :root {
-    --content-max-width: clamp(1300px, 40vw, 1680px);
-  }
-}
-
-@media (min-width: 3840px) {
-  :root {
-    --content-max-width: 1680px;
-    --content-padding-x: 120px;
+    --content-max-width: clamp(720px, 50vw, 2400px);
+    --content-padding-x: clamp(28px, 4vw, 120px);
   }
 }
 
