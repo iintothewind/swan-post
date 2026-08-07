@@ -208,7 +208,9 @@ title: Post Title
 date: 2026-07-04 10:00:00
 tags: [tag1, tag2]
 header: true   # optional; default true — set false to skip post header include
-footer: true   # optional; default true — set false to skip post footer include
+footer: true   # optional; default true — set false to skip post footer/body attribution
+author: Ivar.Chen   # optional; per-post override; new/gist-sync fill from blog.config.json
+source: https://username.github.io/   # optional; per-post override
 ---
 
 Body content, standard Markdown syntax.
@@ -337,7 +339,7 @@ Controlled by `agentMarkdown` (default `true`). Set `false` to disable all three
 
 `source/_includes/agent-attribution.md` is the mirror header template. Placeholders: `{{SITE_AUTHOR}}`, `{{SITE_URL}}`, `{{GITHUB_USER}}`, `{{GITHUB_URL}}`, `{{CANONICAL_URL}}`, `{{POST_TITLE}}`, `{{POST_DATE}}`, `{{POST_SLUG}}`, `{{POST_TAGS}}`, `{{POST_AUTHOR}}`, `{{POST_SOURCE}}`.
 
-`scripts/utils.js` provides: `getPostAuthor`, `getPostSource`, `buildPostTemplateVars`, `getSiteUrl`, `getPostCanonicalUrl`, `getPostMarkdownUrl`, `buildAgentMarkdown`, `writeAgentMarkdownFile`, `renderLlmsTxt`, `writeLlmsTxt`, `renderPostAlternateLink`.
+`scripts/utils.js` provides: `getDefaultPostAuthor`, `getDefaultPostSource`, `getPostAuthor`, `getPostSource`, `formatPostAttributionFrontMatter`, `buildPostTemplateVars`, `getSiteUrl`, `getPostCanonicalUrl`, `getPostMarkdownUrl`, `buildAgentMarkdown`, `writeAgentMarkdownFile`, `renderLlmsTxt`, `writeLlmsTxt`, `renderPostAlternateLink`.
 
 `parseMarkdownFile` must also return raw `content` (Markdown body string) for mirror generation.
 
@@ -1041,7 +1043,7 @@ copyIfNeeded(path.join(process.cwd(), "node_modules", "mermaid", "dist", "mermai
 }
 
 // Parse a single markdown file, returning:
-// { title, date, formattedDate, tags, categories, slug, content, contentHtml, excerpt, showHeader, showFooter }
+// { title, date, formattedDate, tags, categories, author, source, slug, content, contentHtml, excerpt, showHeader, showFooter }
 // slug is derived from the filename by stripping the .md extension
 function parseMarkdownFile(filePath) {
 const raw = fs.readFileSync(filePath, "utf-8");
@@ -1073,6 +1075,8 @@ date: dateStr,
 formattedDate,
 tags: Array.isArray(data.tags) ? data.tags : (typeof data.tags === "string" && data.tags.trim() ? [data.tags] : []),
 categories: Array.isArray(data.categories) ? data.categories : (typeof data.categories === "string" && data.categories.trim() ? [data.categories] : []),
+author: data.author ? String(data.author) : "",
+source: data.source ? String(data.source) : "",
 slug,
 content,
 contentHtml,
@@ -1099,14 +1103,33 @@ const content = fs.readFileSync(absPath, "utf-8");
 return content || "";
 }
 
-function getPostAuthor(config) {
+function getDefaultPostAuthor(config) {
 return config.postAuthor || config.author || "";
 }
 
-function getPostSource(config) {
+function getDefaultPostSource(config) {
 if (config.postSource) return String(config.postSource);
 const site = getSiteUrl(config);
 return site ? site.replace(/\/$/, "") + "/" : "";
+}
+
+function getPostAuthor(config, post) {
+if (post && post.author) return String(post.author);
+return getDefaultPostAuthor(config);
+}
+
+function getPostSource(config, post) {
+if (post && post.source) return String(post.source);
+return getDefaultPostSource(config);
+}
+
+function formatPostAttributionFrontMatter(config) {
+const author = getDefaultPostAuthor(config);
+const source = getDefaultPostSource(config);
+return "header: true\n"
++ "footer: true\n"
++ "author: " + JSON.stringify(author) + "\n"
++ "source: " + JSON.stringify(source) + "\n";
 }
 
 function buildPostTemplateVars(config, post) {
@@ -1116,8 +1139,8 @@ SITE_AUTHOR: config.author || "",
 SITE_DESCRIPTION: config.description || "",
 BASE_URL: config.baseUrl || "",
 SITE_URL: getSiteUrl(config),
-POST_AUTHOR: getPostAuthor(config),
-POST_SOURCE: getPostSource(config),
+POST_AUTHOR: getPostAuthor(config, post),
+POST_SOURCE: getPostSource(config, post),
 POST_TITLE: post.title,
 POST_DATE: post.formattedDate,
 POST_SLUG: post.slug,
@@ -1167,8 +1190,8 @@ const tags = Array.isArray(post.tags) ? post.tags.join(", ") : "";
 const templateVars = buildPostTemplateVars(config, post);
 templateVars.POST_TAGS = tags;
 const header = renderTemplate(template, templateVars);
-const bodyMeta = "author: " + getPostAuthor(config) + "\nsource: " + getPostSource(config) + "\n\n";
-const footer = "\n---\n\n> © " + getPostAuthor(config) + " · " + getSiteUrl(config) + "\n";
+const bodyMeta = "author: " + getPostAuthor(config, post) + "\nsource: " + getPostSource(config, post) + "\n\n";
+const footer = "\n---\n\n> © " + getPostAuthor(config, post) + " · " + getSiteUrl(config) + "\n";
 return header + "\n" + bodyMeta + (post.content || "").trim() + footer;
 }
 
@@ -1329,7 +1352,7 @@ loadConfig, copyStaticAssets, parseMarkdownFile, renderTemplate, listPostFiles,
 renderTagsHtml, sortPostsByDateDesc, renderRecentPostsHtml,
 loadPostsIndex, savePostsIndex,
 resolvePostIncludeFlags, loadPostIncludeFile, buildPostIncludes,
-getPostAuthor, getPostSource, buildPostTemplateVars, getSiteUrl, getPostCanonicalUrl, getPostMarkdownUrl,
+getDefaultPostAuthor, getDefaultPostSource, getPostAuthor, getPostSource, formatPostAttributionFrontMatter, buildPostTemplateVars, getSiteUrl, getPostCanonicalUrl, getPostMarkdownUrl,
 buildAgentMarkdown, writeAgentMarkdownFile, renderLlmsTxt, writeLlmsTxt, renderPostAlternateLink
 };
 ```
@@ -1544,6 +1567,7 @@ module.exports = { renderOne };
 ```javascript
 const fs = require("fs-extra");
 const path = require("path");
+const { loadConfig, formatPostAttributionFrontMatter } = require("./utils");
 
 function newPost(slug, titleOption) {
 if (!slug || !/^[a-z0-9\-]+$/.test(slug)) {
@@ -1564,15 +1588,13 @@ process.exit(1);
 }
 
 const title = titleOption || slug;
+const config = loadConfig();
+const attributionFields = formatPostAttributionFrontMatter(config);
 const content = `---
 title: ${title}
 date: ${dateStr}
 tags: []
-header: true
-footer: true
-author: Ivar.Chen
-source: https://username.github.io/
----
+${attributionFields}---
 
 Write your content here.
 `;
@@ -1646,7 +1668,7 @@ const { execFileSync } = require("child_process");
 const path = require("path");
 const fs = require("fs-extra");
 const { build } = require("./build");
-const { loadConfig } = require("./utils");
+const { loadConfig, formatPostAttributionFrontMatter } = require("./utils");
 
 function deploy(message) {
 const config = loadConfig();
@@ -1786,7 +1808,7 @@ program.parse(process.argv);
 **Sync a GitHub user's public gists as blog posts and merge them into existing posts.** No new third-party dependencies (Node 18+ has built-in `fetch`).
 
 - Filtering rules: only sync gists containing `.md` files; for multi-file gists, take the first `.md` file; gists without Markdown files (code snippets, etc.) are skipped.
-- Generated post front-matter: `title` from gist `description` (with `_by_agent_zero` signature suffix stripped; falls back to filename if empty), `date` from `created_at` (UTC glyph `YYYY-MM-DD HH:mm:ss`, consistent with js-yaml's parsing of timezone-less dates), `tags` fixed as `["gist", "summary"]` (automatic keyword extraction is infeasible: Chinese requires word segmentation, and dependencies are limited to 4 packages), `gist_id` records the source id (deletion sync depends on this field).
+- Generated post front-matter: `title` from gist `description` (with `_by_agent_zero` signature suffix stripped; falls back to filename if empty), `date` from `created_at` (UTC glyph `YYYY-MM-DD HH:mm:ss`, consistent with js-yaml's parsing of timezone-less dates), `tags` fixed as `["gist", "summary"]` (automatic keyword extraction is infeasible: Chinese requires word segmentation, and dependencies are limited to 4 packages), `header`/`footer`/`author`/`source` from `formatPostAttributionFrontMatter(config)`, and `gist_id` records the source id (deletion sync depends on this field).
 - Filename: `<date>-<gist_id>.md` (e.g. `2026-08-02-3474dbaa807b54028c3411f18827c7da.md`); gist ids are unique, stable, and conform to `[a-z0-9-]` rules.
 - Deletion sync: local posts with a `gist_id` marker but whose remote gist no longer exists will be deleted.
 - Automatically runs `build()` after completion to refresh the entire site.
@@ -1803,7 +1825,7 @@ const fs = require("fs-extra");
 const path = require("path");
 const matter = require("gray-matter");
 const { build } = require("./build");
-const { loadConfig } = require("./utils");
+const { loadConfig, formatPostAttributionFrontMatter } = require("./utils");
 
 // Field in front-matter marking the post's gist source (deletion sync depends on it)
 const GIST_ID_FIELD = "gist_id";
@@ -1853,11 +1875,13 @@ function toLocalDateStr(iso) {
 // Generate post content with front-matter; title uses JSON-style double-quoted strings, safe for any special characters.
 // tags are fixed as ["gist", "summary"]: gist-synced commentary/summary content, uniformly English tags.
 // Automatic keyword extraction is infeasible (Chinese requires word segmentation, and project dependencies are limited to 4 packages by design.md), so tags are fixed.
-function buildPostContent(gist, filename, content) {
+function buildPostContent(gist, filename, content, config) {
+  const attributionFields = formatPostAttributionFrontMatter(config || {});
   return "---\n"
     + "title: " + JSON.stringify(gistTitle(gist, filename)) + "\n"
     + "date: " + toLocalDateStr(gist.created_at) + "\n"
     + "tags: [\"gist\", \"summary\"]\n"
+    + attributionFields
     + GIST_ID_FIELD + ": " + gist.id + "\n"
     + "---\n\n"
     + content.replace(/^\s+/, "");
@@ -1865,9 +1889,10 @@ function buildPostContent(gist, filename, content) {
 
 // Sync core. baseDir is injectable (CLI uses cwd by default; tests pass a temp directory).
 // Returns stats { total, added, updated, removed, skipped }
-async function syncGistsCore({ user, token, baseDir, onProgress }) {
+async function syncGistsCore({ user, token, baseDir, config, onProgress }) {
   const postsDir = path.join(baseDir, "source", "_posts");
   fs.ensureDirSync(postsDir);
+  const blogConfig = config || loadConfig();
 
   const gists = await fetchPublicGists(user, token);
   const remoteIds = new Set();
@@ -1887,7 +1912,7 @@ async function syncGistsCore({ user, token, baseDir, onProgress }) {
     const datePrefix = toLocalDateStr(gist.created_at).slice(0, 10);
     const target = path.join(postsDir, datePrefix + "-" + gist.id + ".md");
     const existed = fs.existsSync(target);
-    fs.writeFileSync(target, buildPostContent(gist, file.filename, content), "utf-8");
+    fs.writeFileSync(target, buildPostContent(gist, file.filename, content, blogConfig), "utf-8");
     if (existed) { updated++; } else { added++; }
     if (onProgress) onProgress((existed ? "Updated" : "Added") + ": " + file.filename);
   }
@@ -1954,7 +1979,10 @@ module.exports = {
 title: Hello World
 date: 2026-07-04 10:00:00
 tags: [essay]
-categories: []
+header: true
+footer: true
+author: Ivar.Chen
+source: https://username.github.io/
 ---
 
 This is my first post. Welcome to my blog.
@@ -2028,7 +2056,7 @@ swp-cli deploy -m "Wrote a new post"
     - The sidebar "Timeline" tab shows the Hello World post; clicking it navigates to the post page.
     - The sidebar "Tags" tab shows "essay (1)"; clicking it displays the corresponding post in the list below.
     - Clicking the overlay mask area outside the sidebar dismisses the sidebar.
-19. Test incremental rendering: run `node scripts/cli.js new second-post --title "Second Post"`, edit the generated md file to add some body text, then run `node scripts/cli.js render source/_posts/<generated filename>.md`, verify:
+19. Test incremental rendering: run `node scripts/cli.js new second-post --title "Second Post"`, verify the generated md front-matter includes `header`, `footer`, `author`, and `source` (from `formatPostAttributionFrontMatter`), edit the body, then run `node scripts/cli.js render source/_posts/<generated filename>.md`, verify:
     - `docs/posts/<slug>.html` is created.
     - `docs/posts.json` has a new entry for this post, and the overall order is still by date descending.
     - **Without re-running the `build` command**, refreshing the homepage (`docs/index.html`) shows this new post at the top of the recent posts list (because its date is the newest), and refreshing the sidebar also shows it.
@@ -2048,7 +2076,7 @@ swp-cli deploy -m "Wrote a new post"
 ## 11. Acceptance Criteria (Definition of Done)
 
 - [ ] `node scripts/cli.js build` (or `swp-cli build` after `npm link`) runs without errors and generates a complete `docs/` directory.
-- [ ] `swp-cli new <slug> --title "<title>"` (or the equivalent `node scripts/cli.js new ...`) correctly generates an md file with front-matter.
+- [ ] `swp-cli new <slug> --title "<title>"` (or the equivalent `node scripts/cli.js new ...`) correctly generates an md file with front-matter including `header`, `footer`, `author`, and `source`.
 - [ ] `swp-cli render <file>` (or the equivalent `node scripts/cli.js render <file>`) can render a single post and correctly update `posts.json` (test both adding a new slug and overwriting an existing one).
 - [ ] `swp-cli deploy` (or the equivalent `node scripts/cli.js deploy`) reads the `deployTarget` config from `blog.config.json`, clones the Pages repo to `.deploy/`, replaces its content, and force pushes to the remote; `docs/` is not committed to the source repo. Git command errors print readable messages instead of raw exceptions.
 - [ ] The homepage content area (without opening the sidebar) directly server-renders the most recent `recentPostsCount` posts (title, date, tag, excerpt), rather than relying on frontend JS async fetch to display them; after changing `recentPostsCount` and re-running `build`, the homepage display count changes accordingly.
@@ -2061,10 +2089,10 @@ swp-cli deploy -m "Wrote a new post"
 - [ ] Mermaid renders correctly: a ` ```mermaid ` fenced block appears as `<div class="mermaid">` in the post page; `mermaid.min.js` is loaded only on pages that contain diagrams; dark/light theme follows `prefers-color-scheme` and survives theme changes via `data-src` restore; `docs/js/mermaid.min.js` is present; the homepage excerpt shows `[diagram]`.
 - [ ] All static resource paths (css/js/posts.json) on every page load correctly under both empty and non-empty `baseUrl` configurations (at minimum verify `baseUrl: ""`; for non-empty `baseUrl`, manually check that the code logic is self-consistent).
 - [ ] The `docs/` directory is a build artifact, already in `.gitignore`, and not committed to the source repo. It is pushed to a separate GitHub Pages repo via the `deploy` command.
-- [ ] `swp-cli gist-sync` (or `node scripts/cli.js gist-sync`) can fetch all public gists of `githubUser` that contain Markdown files, generate posts with `gist_id` front-matter into `source/_posts/`, and rebuild; when a gist is deleted, the corresponding local post is cleaned up.
+- [ ] `swp-cli gist-sync` (or `node scripts/cli.js gist-sync`) can fetch all public gists of `githubUser` that contain Markdown files, generate posts with `gist_id`, `header`, `footer`, `author`, and `source` front-matter into `source/_posts/`, and rebuild; when a gist is deleted, the corresponding local post is cleaned up.
 - [ ] Post pages inject global header/footer HTML from `source/_includes/` (configurable via `postHeader` / `postFooter`); per-post `header: false` / `footer: false` opts out; excerpts exclude fragment text; missing include files warn and continue.
 - [ ] When `agentMarkdown` is enabled: each post outputs `docs/posts/<slug>.md`, `docs/llms.txt` is regenerated on build/render, and post pages include `<link rel="alternate" type="text/markdown">`; setting `agentMarkdown: false` disables all three.
-- [ ] Post-body attribution: `.post-body-meta` and `.post-body-attribution` inject `author:` / `source:` lines (configurable via `postBodyMeta` / `postBodyAttribution`); `footer: false` opts out; `.md` mirrors prepend the same `author:` / `source:` lines; `scripts/test-attribution.sh` passes hard assertions after deploy.
+- [ ] Post-body attribution: `.post-body-meta` and `.post-body-attribution` inject `author:` / `source:` lines (configurable via `postBodyMeta` / `postBodyAttribution`); `footer: false` opts out; `.md` mirrors prepend the same `author:` / `source:` lines; front-matter `author` / `source` override site defaults; `new` and `gist-sync` scaffold all four attribution fields; `scripts/test-attribution.sh` passes hard assertions after deploy.
 
 ---
 

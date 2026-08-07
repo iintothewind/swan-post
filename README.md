@@ -47,6 +47,8 @@ npx swp-cli new my-first-post --title "My First Article"
 bun scripts/cli.js new my-first-post --title "My First Article"
 ```
 
+The scaffolded front-matter includes `header: true`, `footer: true`, `author`, and `source` (filled from `postAuthor` / `postSource` in `blog.config.json`).
+
 ### Render a Single Article and Add to Site
 
 ```bash
@@ -132,7 +134,7 @@ bun scripts/cli.js gist-sync --user iintothewind
 
 Behavior notes:
 - Only syncs public gists that **contain Markdown files** (takes the first `.md` in multi-file gists); code-snippet gists are automatically skipped.
-- Articles are written to `source/_posts/<date>-<gist_id>.md`, with auto-generated front-matter: `title` from the gist description (stripping the `_by_agent_zero` suffix), `date` from the gist creation time, `tags` fixed to `["gist", "summary"]`, and `gist_id` recording the source.
+- Articles are written to `source/_posts/<date>-<gist_id>.md`, with auto-generated front-matter: `title` from the gist description (stripping the `_by_agent_zero` suffix), `date` from the gist creation time, `tags` fixed to `["gist", "summary"]`, `header`/`footer`/`author`/`source` from site defaults, and `gist_id` recording the source.
 - If a gist is deleted on GitHub, re-syncing will remove the corresponding local article.
 - Automatically performs a full site rebuild after syncing.
 - Optional: set the `GITHUB_TOKEN` environment variable to increase the GitHub API rate limit (anonymous: 60 requests/hour).
@@ -154,6 +156,8 @@ source: https://username.github.io/   # optional; defaults to postSource / siteU
 
 Body content in standard Markdown syntax.
 ```
+
+`new` and `gist-sync` write `header`, `footer`, `author`, and `source` into every new post. At build time, front-matter `author` / `source` override `blog.config.json` defaults for body meta, attribution blocks, and `.md` mirrors.
 
 Filename format: `<slug>.md`, where the slug is specified by the user on the command line (lowercase letters, digits, and hyphens only).
 
@@ -191,8 +195,8 @@ Fragments support the same `{{KEY}}` placeholders as templates, for example:
 | `{{POST_DATE}}` | Formatted publish date |
 | `{{POST_SLUG}}` | Post slug |
 | `{{POST_TAGS_HTML}}` | Rendered tag pills |
-| `{{POST_AUTHOR}}` | Author for body meta (`postAuthor` config, else `author`) |
-| `{{POST_SOURCE}}` | Site source URL (`postSource` config, else `siteUrl/`) |
+| `{{POST_AUTHOR}}` | Author for body meta (front-matter `author`, else `postAuthor` / `author`) |
+| `{{POST_SOURCE}}` | Site source URL (front-matter `source`, else `postSource` / `siteUrl/`) |
 | `{{CANONICAL_URL}}` | Full URL to the post HTML page |
 | `{{GITHUB_USER}}` / `{{GITHUB_URL}}` | GitHub username and profile URL |
 
@@ -211,8 +215,8 @@ Reference external CSS/JS from fragments, e.g. `<script src="{{BASE_URL}}/js/you
 }
 ```
 
-- `postAuthor` — value for `author:` lines (defaults to `author`)
-- `postSource` — value for `source:` lines (defaults to `siteUrl` with trailing `/`)
+- `postAuthor` — default for `author:` when front-matter omits `author` (falls back to `author`)
+- `postSource` — default for `source:` when front-matter omits `source` (falls back to `siteUrl/` with trailing slash)
 
 **Excerpt safety:** header/footer/body-meta HTML is injected in `templates/post.html` around `POST_CONTENT_HTML`, not inside `parseMarkdownFile`, so homepage excerpts stay body-only.
 
@@ -246,7 +250,7 @@ On pure static GitHub Pages (no Cloudflare/edge proxy), swan-post uses a **build
 - `siteUrl`: Canonical public site URL (no trailing slash). Used for `llms.txt`, `rel="alternate"` links, and URLs inside agent mirrors. Falls back to `https://<githubUser>.github.io` when omitted.
 - `agentMarkdown`: When `true` (default), each build/render writes `docs/posts/<slug>.md`, regenerates `docs/llms.txt`, and adds `<link rel="alternate" type="text/markdown">` in post page `<head>`. Set to `false` to disable all three.
 - `agentAttribution`: Path to the Markdown template prepended to each mirror file. Defaults to `source/_includes/agent-attribution.md`.
-- `postAuthor` / `postSource`: Prepended as `author:` / `source:` lines in each `.md` mirror (after the attribution header, before the post body).
+- `postAuthor` / `postSource`: Site-wide defaults; `new`/`gist-sync` copy into each post; front-matter overrides at build time for HTML and `.md` mirrors.
 
 **Mirror file shape:** rendered attribution header (FAQ-style metadata) + `author:` / `source:` lines + original post Markdown body + short copyright footer.
 
@@ -263,8 +267,8 @@ On pure static GitHub Pages (no Cloudflare/edge proxy), swan-post uses a **build
 | `{{POST_DATE}}` | Formatted publish date |
 | `{{POST_SLUG}}` | Post slug |
 | `{{POST_TAGS}}` | Comma-separated tags |
-| `{{POST_AUTHOR}}` | Same as `postAuthor` / `author` |
-| `{{POST_SOURCE}}` | Same as `postSource` / `siteUrl/` |
+| `{{POST_AUTHOR}}` | Front-matter `author`, else `postAuthor` / `author` |
+| `{{POST_SOURCE}}` | Front-matter `source`, else `postSource` / `siteUrl/` |
 
 **After deploy**, agents can fetch:
 
@@ -358,7 +362,7 @@ Site configuration file `blog.config.json`:
 - `siteUrl`: Public canonical site URL for agent mirrors and `llms.txt`. No trailing slash.
 - `agentMarkdown`: Enable per-post `.md` mirrors, `llms.txt`, and `rel="alternate"` links. Default `true`; set `false` to disable.
 - `agentAttribution`: Path to the Markdown template for agent mirror headers. Defaults to `source/_includes/agent-attribution.md`.
-- `postAuthor` / `postSource`: Default values for `author:` / `source:` lines injected into every post body and prepended to `.md` mirrors. Fall back to `author` and `siteUrl/` when omitted.
+- `postAuthor` / `postSource`: Site-wide defaults when front-matter omits `author`/`source`; `new` and `gist-sync` write them into each post file.
 - `postBodyMeta` / `postBodyAttribution`: Paths to HTML fragments for top-of-body and end-of-body attribution. Controlled by `footer` front-matter (same as footer include).
 
 ## Directory Structure
