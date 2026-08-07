@@ -1,5 +1,6 @@
 const fs = require("fs-extra");
 const path = require("path");
+const { loadConfig, formatPostAttributionFrontMatter } = require("./utils");
 
 function newPost(slug, titleOption) {
 if (!slug || !/^[a-z0-9\-]+$/.test(slug)) {
@@ -20,12 +21,13 @@ process.exit(1);
 }
 
 const title = titleOption || slug;
+const config = loadConfig();
+const attributionFields = formatPostAttributionFrontMatter(config);
 const content = `---
 title: ${title}
 date: ${dateStr}
 tags: []
-categories: []
----
+${attributionFields}---
 
 Write your content here.
 `;

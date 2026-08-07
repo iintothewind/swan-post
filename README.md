@@ -146,9 +146,10 @@ Each article lives in the `source/_posts/` directory, with the following format:
 title: Article Title
 date: 2026-07-04 10:00:00
 tags: [tag1, tag2]
-categories: [category1]
 header: true   # optional; default true — set false to skip post header include
-footer: true   # optional; default true — set false to skip post footer include
+footer: true   # optional; default true — set false to skip post footer/body attribution
+author: Ivar.Chen   # optional; defaults to postAuthor / author in blog.config.json
+source: https://username.github.io/   # optional; defaults to postSource / siteUrl/
 ---
 
 Body content in standard Markdown syntax.

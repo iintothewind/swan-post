@@ -7,7 +7,7 @@ const fs = require("fs-extra");
 const path = require("path");
 const matter = require("gray-matter");
 const { build } = require("./build");
-const { loadConfig } = require("./utils");
+const { loadConfig, formatPostAttributionFrontMatter } = require("./utils");
 
 // front-matter field that marks a post as sourced from a gist (used by deletion sync)
 const GIST_ID_FIELD = "gist_id";
@@ -59,12 +59,13 @@ function toLocalDateStr(iso) {
 // Build post content with front-matter; title uses JSON-style double-quoted string, safe for any special characters.
 // Tags are fixed to ["gist", "summary"]: gist-synced commentary/summary content, uniform English tags.
 // Auto-extracting keywords is infeasible (Chinese needs segmentation, and project deps are capped at 4 packages per design.md, no additions), so tags are fixed.
-function buildPostContent(gist, filename, content) {
+function buildPostContent(gist, filename, content, config) {
+  const attributionFields = formatPostAttributionFrontMatter(config || {});
   return "---\n"
     + "title: " + JSON.stringify(gistTitle(gist, filename)) + "\n"
     + "date: " + toLocalDateStr(gist.created_at) + "\n"
     + "tags: [\"gist\", \"summary\"]\n"
-    + "categories: []\n"
+    + attributionFields
     + GIST_ID_FIELD + ": " + gist.id + "\n"
     + "---\n\n"
     + content.replace(/^\s+/, "");
@@ -72,9 +73,10 @@ function buildPostContent(gist, filename, content) {
 
 // Sync core. baseDir is injectable (CLI defaults to cwd; tests pass a temp dir).
 // Returns stats { total, added, updated, removed, skipped }
-async function syncGistsCore({ user, token, baseDir, onProgress }) {
+async function syncGistsCore({ user, token, baseDir, config, onProgress }) {
   const postsDir = path.join(baseDir, "source", "_posts");
   fs.ensureDirSync(postsDir);
+  const blogConfig = config || loadConfig();
 
   const gists = await fetchPublicGists(user, token);
   const remoteIds = new Set();
@@ -93,7 +95,7 @@ async function syncGistsCore({ user, token, baseDir, onProgress }) {
 
     const datePrefix = toLocalDateStr(gist.created_at).slice(0, 10);
     const target = path.join(postsDir, datePrefix + "-" + gist.id + ".md");
-    const newContent = buildPostContent(gist, file.filename, content);
+    const newContent = buildPostContent(gist, file.filename, content, blogConfig);
     const existed = fs.existsSync(target);
     if (existed) {
       const oldContent = fs.readFileSync(target, "utf-8");
@@ -140,6 +142,7 @@ async function syncGists(userOption) {
       user,
       token,
       baseDir: process.cwd(),
+      config,
       onProgress: (line) => console.log("  " + line)
     });
     console.log("Sync complete: fetched " + stats.total + " gist(s), "

@@ -1,7 +1,12 @@
 ---
 title: compilation error when using Comparator.comparing()
-date: 2019-12-10 18:13:12
-tags: [java]
+date: 2019-12-10T18:13:12.000Z
+tags:
+  - java
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 ## the problem

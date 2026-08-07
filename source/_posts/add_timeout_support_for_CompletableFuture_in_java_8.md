@@ -1,7 +1,11 @@
 ---
 title: add timeout support for CompletableFuture in java 8
-date: 2019-08-13 14:42:50
+date: 2019-08-13T14:42:50.000Z
 tags: java
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 ## reason

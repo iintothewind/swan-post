@@ -1,7 +1,12 @@
 ---
 title: street cars in GT Sport
-date: 2021-09-06 00:39:21
-tags: [racing]
+date: 2021-09-06T00:39:21.000Z
+tags:
+  - racing
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 # GT Sport 街车点评

@@ -1,7 +1,13 @@
 ---
 title: centos 7 install docker
-date: 2021-07-26 16:16:15
-tags: [linux,centos7]
+date: 2021-07-26T16:16:15.000Z
+tags:
+  - linux
+  - centos7
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 ```bash

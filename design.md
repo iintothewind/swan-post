@@ -207,7 +207,6 @@ File content format:
 title: Post Title
 date: 2026-07-04 10:00:00
 tags: [tag1, tag2]
-categories: [category1]
 header: true   # optional; default true — set false to skip post header include
 footer: true   # optional; default true — set false to skip post footer include
 ---
@@ -219,7 +218,7 @@ Field descriptions:
 - `title` (required, string): Post title, can be in Chinese.
 - `date` (required, format `YYYY-MM-DD HH:mm:ss`): Publish time, used for sorting. Note: js-yaml parses dates without timezone as **UTC** (YAML 1.1 spec), so build results are independent of the build machine's timezone — in `posts.json`, `date` stores the UTC ISO string (for sorting), and `formattedDate` takes the UTC `YYYY-MM-DD` for display, which is always equal to the date manually written in the front-matter.
 - `tags` (optional, string array): Default `[]`.
-- `categories` (optional, string array): Default `[]`. In the current version, parse and store them, but do not use categories in the UI yet (only tags are used for grouped display).
+- `author` / `source` (optional, string): Per-post attribution overrides. When omitted, `new` and `gist-sync` fill them from `postAuthor` / `postSource` in `blog.config.json`; build uses front-matter values when present.
 - `header` / `footer` (optional, boolean): Default `true`. Set to `false` to opt out of global post header/footer HTML fragments on that post. Only boolean `false` opts out. `footer: false` also skips body meta, body attribution, and the visible footer.
 
 Always use the `gray-matter` library to parse this front-matter. **Do not write your own YAML parser.**
@@ -1569,7 +1568,10 @@ const content = `---
 title: ${title}
 date: ${dateStr}
 tags: []
-categories: []
+header: true
+footer: true
+author: Ivar.Chen
+source: https://username.github.io/
 ---
 
 Write your content here.
@@ -1784,7 +1786,7 @@ program.parse(process.argv);
 **Sync a GitHub user's public gists as blog posts and merge them into existing posts.** No new third-party dependencies (Node 18+ has built-in `fetch`).
 
 - Filtering rules: only sync gists containing `.md` files; for multi-file gists, take the first `.md` file; gists without Markdown files (code snippets, etc.) are skipped.
-- Generated post front-matter: `title` from gist `description` (with `_by_agent_zero` signature suffix stripped; falls back to filename if empty), `date` from `created_at` (UTC glyph `YYYY-MM-DD HH:mm:ss`, consistent with js-yaml's parsing of timezone-less dates), `tags` fixed as `["gist", "summary"]` (automatic keyword extraction is infeasible: Chinese requires word segmentation, and dependencies are limited to 4 packages), `categories` empty, `gist_id` records the source id (deletion sync depends on this field).
+- Generated post front-matter: `title` from gist `description` (with `_by_agent_zero` signature suffix stripped; falls back to filename if empty), `date` from `created_at` (UTC glyph `YYYY-MM-DD HH:mm:ss`, consistent with js-yaml's parsing of timezone-less dates), `tags` fixed as `["gist", "summary"]` (automatic keyword extraction is infeasible: Chinese requires word segmentation, and dependencies are limited to 4 packages), `gist_id` records the source id (deletion sync depends on this field).
 - Filename: `<date>-<gist_id>.md` (e.g. `2026-08-02-3474dbaa807b54028c3411f18827c7da.md`); gist ids are unique, stable, and conform to `[a-z0-9-]` rules.
 - Deletion sync: local posts with a `gist_id` marker but whose remote gist no longer exists will be deleted.
 - Automatically runs `build()` after completion to refresh the entire site.
@@ -1856,7 +1858,6 @@ function buildPostContent(gist, filename, content) {
     + "title: " + JSON.stringify(gistTitle(gist, filename)) + "\n"
     + "date: " + toLocalDateStr(gist.created_at) + "\n"
     + "tags: [\"gist\", \"summary\"]\n"
-    + "categories: []\n"
     + GIST_ID_FIELD + ": " + gist.id + "\n"
     + "---\n\n"
     + content.replace(/^\s+/, "");

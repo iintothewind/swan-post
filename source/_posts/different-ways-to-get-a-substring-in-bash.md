@@ -1,7 +1,13 @@
 ---
 title: different ways to get a substring in bash
-date: 2020-04-30 09:05:47
-tags: [linux,bash]
+date: 2020-04-30T09:05:47.000Z
+tags:
+  - linux
+  - bash
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 Linux 的字符串截取很有用,有八种方法。

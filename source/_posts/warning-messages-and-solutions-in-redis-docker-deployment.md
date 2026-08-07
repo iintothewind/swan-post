@@ -1,7 +1,13 @@
 ---
 title: warning messages and solutions in redis docker deployment
-date: 2021-01-15 21:42:02
-tags: [linux,bash]
+date: 2021-01-15T21:42:02.000Z
+tags:
+  - linux
+  - bash
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 # warning

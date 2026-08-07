@@ -1,7 +1,13 @@
 ---
 title: firewalld command cheet sheet
-date: 2020-05-03 15:50:42
-tags: [linux,bash]
+date: 2020-05-03T15:50:42.000Z
+tags:
+  - linux
+  - bash
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 启动一个服务：

@@ -1,7 +1,12 @@
 ---
 title: mqtt and mosquitto learning note
-date: 2020-05-03 17:22:00
-tags: [mqtt]
+date: 2020-05-03T17:22:00.000Z
+tags:
+  - mqtt
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 mqtt是一个设计的非常好用的轻量级消息传输协议.
 它广泛被应用在机器直接交互的物联网场景之中. 它的特点相信在网上很多文章中已经介绍的够多了.

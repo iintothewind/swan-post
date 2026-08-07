@@ -1,7 +1,14 @@
 ---
 title: fixed CORS problem caused by shiro
-date: 2024-09-06 13:10:27
-tags: [shiro,java,cors]
+date: 2024-09-06T13:10:27.000Z
+tags:
+  - shiro
+  - java
+  - cors
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 ## problem

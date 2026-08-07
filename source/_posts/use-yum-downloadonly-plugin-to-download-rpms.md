@@ -1,7 +1,13 @@
 ---
 title: use yum downloadonly plugin to download rpms
-date: 2021-07-17 09:27:40
-tags: [linux,centos7]
+date: 2021-07-17T09:27:40.000Z
+tags:
+  - linux
+  - centos7
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 # 使用yum downloadonly插件下载rpm安装文件

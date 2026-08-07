@@ -1,7 +1,13 @@
 ---
 title: bash command cheat sheet
-date: 2020-05-03 11:53:30
-tags: [linux,bash]
+date: 2020-05-03T11:53:30.000Z
+tags:
+  - linux
+  - bash
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 My WizNote service has been expired.

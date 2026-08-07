@@ -1,7 +1,12 @@
 ---
 title: the reason of NoClassDefFoundError and how to fix it
-date: 2020-05-08 15:48:27
-tags: [java]
+date: 2020-05-08T15:48:27.000Z
+tags:
+  - java
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 ## problem

@@ -1,7 +1,13 @@
 ---
 title: create user and grant permissions after installing mysqld
-date: 2021-07-17 09:36:54
-tags: [linux,mysql]
+date: 2021-07-17T09:36:54.000Z
+tags:
+  - linux
+  - mysql
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 mysqld在安装完成以后会生成一个随机的root密码, 但需要在登录之后马上修改密码, 比较繁琐.

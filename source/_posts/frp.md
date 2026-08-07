@@ -1,7 +1,14 @@
 ---
 title: frp
-date: 2023-07-10 12:21:34
-tags: [linux,docker,frp]
+date: 2023-07-10T12:21:34.000Z
+tags:
+  - linux
+  - docker
+  - frp
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 # frp docker deployment

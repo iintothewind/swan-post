@@ -1,7 +1,13 @@
 ---
 title: use update-alternatives to solve python no such file or directory problem
-date: 2019-10-16 11:18:53
-tags: [linux,centos8]
+date: 2019-10-16T11:18:53.000Z
+tags:
+  - linux
+  - centos8
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 ## the problem

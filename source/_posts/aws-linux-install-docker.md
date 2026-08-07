@@ -1,7 +1,13 @@
 ---
 title: aws linux install docker
-date: 2023-11-20 14:49:40
-tags: [linux,docker]
+date: 2023-11-20T14:49:40.000Z
+tags:
+  - linux
+  - docker
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 ```bash

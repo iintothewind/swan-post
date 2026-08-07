@@ -1,7 +1,12 @@
 ---
 title: ffmpeg useful commands
-date: 2021-10-29 14:06:44
-tags: [ffmpeg]
+date: 2021-10-29T14:06:44.000Z
+tags:
+  - ffmpeg
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 ### Convert MP3 to OGG

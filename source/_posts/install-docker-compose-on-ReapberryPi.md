@@ -1,7 +1,12 @@
 ---
 title: install docker-compose on ReapberryPi
-date: 2020-05-03 17:13:37
-tags: [linux]
+date: 2020-05-03T17:13:37.000Z
+tags:
+  - linux
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 Arm Arch based docker-compose is not officially provided.

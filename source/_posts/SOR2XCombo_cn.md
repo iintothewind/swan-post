@@ -1,7 +1,12 @@
 ---
 title: 怒之铁拳 SOR2XCombo CN
-date: 2026-06-20 19:21:34
-tags: [game]
+date: 2026-06-20T19:21:34.000Z
+tags:
+  - game
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 # 怒之铁拳 SOR2XCombo

@@ -1,7 +1,15 @@
 ---
-title: fix self signed certificate in certificate chain error while executing npm install
-date: 2019-12-12 13:20:30
-tags: [javascript,npm]
+title: >-
+  fix self signed certificate in certificate chain error while executing npm
+  install
+date: 2019-12-12T13:20:30.000Z
+tags:
+  - javascript
+  - npm
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 ## the problem

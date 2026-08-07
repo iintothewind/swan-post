@@ -87,6 +87,8 @@ date: dateStr,
 formattedDate,
 tags: Array.isArray(data.tags) ? data.tags : (typeof data.tags === "string" && data.tags.trim() ? [data.tags] : []),
 categories: Array.isArray(data.categories) ? data.categories : (typeof data.categories === "string" && data.categories.trim() ? [data.categories] : []),
+author: data.author ? String(data.author) : "",
+source: data.source ? String(data.source) : "",
 slug,
 content,
 contentHtml,
@@ -99,14 +101,33 @@ showFooter: data.footer !== false
 
 
 
-function getPostAuthor(config) {
+function getDefaultPostAuthor(config) {
 return config.postAuthor || config.author || "";
 }
 
-function getPostSource(config) {
+function getDefaultPostSource(config) {
 if (config.postSource) return String(config.postSource);
 const site = getSiteUrl(config);
 return site ? site.replace(/\/$/, "") + "/" : "";
+}
+
+function getPostAuthor(config, post) {
+if (post && post.author) return String(post.author);
+return getDefaultPostAuthor(config);
+}
+
+function getPostSource(config, post) {
+if (post && post.source) return String(post.source);
+return getDefaultPostSource(config);
+}
+
+function formatPostAttributionFrontMatter(config) {
+const author = getDefaultPostAuthor(config);
+const source = getDefaultPostSource(config);
+return "header: true\n"
++ "footer: true\n"
++ "author: " + JSON.stringify(author) + "\n"
++ "source: " + JSON.stringify(source) + "\n";
 }
 
 function buildPostTemplateVars(config, post) {
@@ -116,8 +137,8 @@ SITE_AUTHOR: config.author || "",
 SITE_DESCRIPTION: config.description || "",
 BASE_URL: config.baseUrl || "",
 SITE_URL: getSiteUrl(config),
-POST_AUTHOR: getPostAuthor(config),
-POST_SOURCE: getPostSource(config),
+POST_AUTHOR: getPostAuthor(config, post),
+POST_SOURCE: getPostSource(config, post),
 POST_TITLE: post.title,
 POST_DATE: post.formattedDate,
 POST_SLUG: post.slug,
@@ -155,8 +176,8 @@ const tags = Array.isArray(post.tags) ? post.tags.join(", ") : "";
 const templateVars = buildPostTemplateVars(config, post);
 templateVars.POST_TAGS = tags;
 const header = renderTemplate(template, templateVars);
-const bodyMeta = "author: " + getPostAuthor(config) + "\nsource: " + getPostSource(config) + "\n\n";
-const footer = "\n---\n\n> © " + getPostAuthor(config) + " · " + getSiteUrl(config) + "\n";
+const bodyMeta = "author: " + getPostAuthor(config, post) + "\nsource: " + getPostSource(config, post) + "\n\n";
+const footer = "\n---\n\n> © " + getPostAuthor(config, post) + " · " + getSiteUrl(config) + "\n";
 return header + "\n" + bodyMeta + (post.content || "").trim() + footer;
 }
 
@@ -356,6 +377,6 @@ loadConfig, copyStaticAssets, parseMarkdownFile, renderTemplate, listPostFiles,
 renderTagsHtml, sortPostsByDateDesc, renderRecentPostsHtml,
 loadPostsIndex, savePostsIndex,
 resolvePostIncludeFlags, loadPostIncludeFile, buildPostIncludes,
-getPostAuthor, getPostSource, buildPostTemplateVars, getSiteUrl, getPostCanonicalUrl, getPostMarkdownUrl,
+getDefaultPostAuthor, getDefaultPostSource, getPostAuthor, getPostSource, formatPostAttributionFrontMatter, buildPostTemplateVars, getSiteUrl, getPostCanonicalUrl, getPostMarkdownUrl,
 buildAgentMarkdown, writeAgentMarkdownFile, renderLlmsTxt, writeLlmsTxt, renderPostAlternateLink
 };

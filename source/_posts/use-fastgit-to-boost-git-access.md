@@ -1,7 +1,13 @@
 ---
 title: use fastgit to boost git access
-date: 2021-11-09 16:56:30
-tags: [linux,git]
+date: 2021-11-09T16:56:30.000Z
+tags:
+  - linux
+  - git
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 ```bash

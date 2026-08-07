@@ -1,7 +1,12 @@
 ---
 title: Streets of Rage SOR2XCombo EN
-date: 2026-06-20 19:21:34
-tags: [game]
+date: 2026-06-20T19:21:34.000Z
+tags:
+  - game
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 # Streets of Rage SOR2XCombo

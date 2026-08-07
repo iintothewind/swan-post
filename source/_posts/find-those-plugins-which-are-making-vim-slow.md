@@ -1,7 +1,12 @@
 ---
 title: find those plugins which are making vim slow
-date: 2019-12-10 17:53:36
-tags: [vim]
+date: 2019-12-10T17:53:36.000Z
+tags:
+  - vim
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 ## option 1: use **hyiltiz/vim-plugins-profile**

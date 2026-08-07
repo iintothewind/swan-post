@@ -1,7 +1,13 @@
 ---
 title: install language support for centos 8
-date: 2019-10-16 11:48:25
-tags: [linux,centos8]
+date: 2019-10-16T11:48:25.000Z
+tags:
+  - linux
+  - centos8
+header: true
+footer: true
+author: Ivar.Chen
+source: 'https://iintothewind.github.io/'
 ---
 
 ## 如何在centos 8 stream上通过命令正确的安装中文语言支持
