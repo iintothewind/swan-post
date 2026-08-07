@@ -516,64 +516,32 @@ body.sidebar-open #overlay-mask {
 }
 
 /* ---------- Responsive layout ---------- */
+/* Sidebar stays overlay drawer on all breakpoints (hidden until ☰). Only content width scales. */
 
-/* Tablet: slightly wider column + fluid side padding */
-@media (min-width: 641px) {
+@media (min-width: 768px) {
   :root {
-    --content-max-width: clamp(720px, 78vw, 800px);
-    --content-padding-x: clamp(28px, 4vw, 40px);
+    --content-max-width: 800px;
+    --content-padding-x: clamp(28px, 4vw, 48px);
   }
 }
 
-/* Desktop: pin sidebar, content uses remaining width with readable cap */
-@media (min-width: 1024px) {
+@media (min-width: 1200px) {
   :root {
-    --content-max-width: clamp(760px, 52vw, 920px);
-    --content-padding-x: clamp(40px, 5vw, 64px);
-    --content-padding-top: 72px;
-  }
-
-  body {
-    display: grid;
-    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
-    grid-template-rows: 1fr;
-    min-height: 100vh;
-  }
-
-  #sidebar {
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    transform: translateX(0);
-    padding-top: 28px;
-  }
-
-  #sidebar-toggle,
-  #overlay-mask {
-    display: none !important;
-  }
-
-  body.sidebar-open #overlay-mask {
-    display: none !important;
-  }
-
-  #content {
-    max-width: min(var(--content-max-width), calc(100vw - var(--sidebar-width) - 2 * var(--content-padding-x)));
+    --content-max-width: 960px;
+    --content-padding-x: clamp(40px, 5vw, 72px);
   }
 }
 
-/* Large desktop / high-DPI wide screens */
-@media (min-width: 1440px) {
+@media (min-width: 1600px) {
   :root {
-    --sidebar-width: 320px;
-    --content-max-width: clamp(820px, 48vw, 980px);
+    --content-max-width: 1100px;
+    --content-padding-x: clamp(48px, 4vw, 96px);
   }
 }
 
 @media (min-width: 1920px) {
   :root {
-    --content-max-width: clamp(860px, 44vw, 1040px);
-    --content-padding-x: clamp(48px, 4vw, 80px);
+    --content-max-width: 1200px;
   }
 }
 
