@@ -435,10 +435,20 @@ body.sidebar-open #overlay-mask {
   padding: 0.2em 0;
 }
 
-.post-body table {
-  width: 100%;
-  max-width: 100%;
+/* Tables: horizontally scrollable on narrow screens (same pattern as mermaid / katex-display) */
+.post-body .table-scroll {
   margin: 0 0 1.2em;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.post-body .table-scroll > table {
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+.post-body table {
   border-collapse: collapse;
   font-size: 0.95em;
 }
@@ -446,6 +456,8 @@ body.sidebar-open #overlay-mask {
   padding: 9px 14px;
   border: 1px solid var(--border);
   text-align: left;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .post-body th {
   font-weight: 700;

@@ -25,6 +25,11 @@ return `<div class="mermaid">${md.utils.escapeHtml(token.content)}</div>`;
 return defaultFence(tokens, idx, options, env, self);
 };
 
+// Wrap tables in a horizontal scroll container so wide markdown tables don't overflow on mobile.
+function wrapTablesInScrollContainer(html) {
+return html.replace(/<table\b/gi, '<div class="table-scroll"><table').replace(/<\/table>/gi, '</table></div>');
+}
+
 // Read blog.config.json, return the config object
 function loadConfig() {
 const configPath = path.join(process.cwd(), "blog.config.json");
@@ -62,7 +67,7 @@ function parseMarkdownFile(filePath) {
 const raw = fs.readFileSync(filePath, "utf-8");
 const { data, content } = matter(raw);
 const slug = path.basename(filePath, ".md");
-const contentHtml = md.render(content);
+const contentHtml = wrapTablesInScrollContainer(md.render(content));
 // Generate excerpt: replace math/diagram markup with placeholders first, then strip HTML tags → decode
 // entities (&amp; → &, using markdown-it's built-in unescapeAll to avoid a hand-rolled incomplete entity
 // table) → normalize whitespace → truncate to 100 visible graphemes (Intl.Segmenter splits by
