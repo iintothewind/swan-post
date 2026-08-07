@@ -1670,7 +1670,7 @@ const fs = require("fs-extra");
 const { build } = require("./build");
 const { loadConfig, formatPostAttributionFrontMatter } = require("./utils");
 
-function deploy(message) {
+function deploy(message, force) {
 const config = loadConfig();
 const repoUrl = config.deployTarget;
 if (!repoUrl) {
@@ -1717,8 +1717,10 @@ var status = execFileSync("git", ["-C", deployDir, "status", "--porcelain"], { e
 if (status) {
 execFileSync("git", ["-C", deployDir, "add", "-A"], { stdio: "inherit" });
 execFileSync("git", ["-C", deployDir, "commit", "-m", commitMsg], { stdio: "inherit" });
+}
+if (status || force) {
 execFileSync("git", ["-C", deployDir, "push", "--force"], { stdio: "inherit" });
-console.log("Pushed to GitHub Pages.");
+console.log(status ? "Pushed to GitHub Pages." : "No file changes; force-pushed to GitHub Pages.");
 } else {
 console.log("No file changes, skipping push.");
 }
@@ -1743,6 +1745,7 @@ Behavior notes:
 - All git calls use `execFileSync` + argument arrays, bypassing the shell; special characters like quotes, `$()`, `;` in `repoUrl` / `commitMsg` are treated as literals and not executed as commands (command injection prevention). Therefore the commit message supports being passed via `-m`; if not provided, it defaults to `deploy: <ISO timestamp>`, and no quote escaping is needed.
 - `docs/` is already in `.gitignore` and will not be committed to the source repo.
 - `.deploy/` is already in `.gitignore`; the temporary clone will not appear in the source repo.
+- `--force` (`-f`): When build output matches `.deploy/` (no new commit), still run `git push --force` — useful when local `.deploy` has unpushed commits or the remote has diverged.
 - All git command failures are caught, printing a readable error message before `process.exit(1)`.
 
 ### 7.7 `scripts/cli.js` (CLI Entry Point, using commander)
@@ -1794,8 +1797,9 @@ program
 .command("deploy")
 .description("Rebuild the site, then auto git add/commit/push to trigger GitHub Pages update")
 .option("-m, --message <message>", "Custom commit message")
+.option("-f, --force", "Force push from .deploy even when build output is unchanged")
 .action((options) => {
-deploy(options.message);
+deploy(options.message, options.force);
 });
 
 program.parse(process.argv);
@@ -2024,6 +2028,7 @@ swp-cli gist-sync --user iintothewind
 swp-cli deploy
 # You can also customize the commit message:
 swp-cli deploy -m "Wrote a new post"
+swp-cli deploy --force   # push even when docs/ output is unchanged
 # Prerequisite for first use: the Pages repo must already exist on GitHub, and blog.config.json must have deployTarget configured (SSH URL)
 
 # After deploying: in the Pages repo's (<user>.github.io) Settings → Pages, set Source to the main branch root (only needs to be done once)

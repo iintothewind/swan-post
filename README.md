@@ -110,13 +110,28 @@ npx swp-cli deploy -m "Wrote a new article"
 bun scripts/cli.js deploy -m "Wrote a new article"
 ```
 
+**Deploy options:**
+
+| Flag | Description |
+|------|-------------|
+| `-m, --message <text>` | Custom commit message in the Pages repo (default: `deploy: <ISO timestamp>`) |
+| `-f, --force` | Run `git push --force` from `.deploy/` even when the rebuilt `docs/` matches what is already there |
+
+**When deploy skips push:** `deploy` only pushes when the rebuilt `docs/` differs from `.deploy/` (new commit) or you pass `--force`. Editing `source/_posts/*.md` front-matter alone may not change HTML output — for example, adding `author` / `source` that match `blog.config.json` defaults produces the same built pages, so you may see `No file changes, skipping push.` even though the source repo changed. Use `--force` when `.deploy` has unpushed commits or the remote has diverged:
+
+```bash
+npx swp-cli deploy --force
+# or with Bun:
+bun scripts/cli.js deploy --force
+```
+
 Command execution flow:
 1. Build the site to `docs/`
-2. Shallow-clone the Pages repo to local `.deploy/`
-3. Replace `.deploy/` contents with `docs/`
-4. Force push to the Pages repo
+2. Shallow-clone or pull the Pages repo into local `.deploy/`
+3. Replace `.deploy/` contents with `docs/` (preserving `.git`)
+4. Commit if files changed, then force-push to the Pages repo (always push when `--force` is set)
 
-> Before the first deployment, make sure the Pages repo has been created on GitHub and you have push access.
+> Before the first deployment, make sure the Pages repo has been created on GitHub and you have push access. The source repo (`swan-post`) and Pages repo (`<user>.github.io`) are separate — `deploy` pushes only the build output, not your Markdown sources.
 
 ### Sync Gists as Articles
 
@@ -358,7 +373,7 @@ Site configuration file `blog.config.json`:
 - `sidebarPostCount`: Maximum posts shown in the sidebar timeline. Defaults to `200`.
 - `postHeader` / `postFooter`: Paths to HTML fragments injected above/below the post body on post pages only. Defaults to `source/_includes/post-header.html` and `source/_includes/post-footer.html` when omitted.
 - `githubUser`: GitHub username; used by `gist-sync` and as fallback for `siteUrl`.
-- `deployTarget`: SSH URL of the GitHub Pages repo, e.g. `"git@github.com:username/username.github.io.git"`. The deploy command pushes build output to this repo.
+- `deployTarget`: SSH URL of the GitHub Pages repo, e.g. `"git@github.com:username/username.github.io.git"`. The deploy command pushes build output to this repo. Use `deploy --force` to push when output is unchanged but the remote needs updating.
 - `siteUrl`: Public canonical site URL for agent mirrors and `llms.txt`. No trailing slash.
 - `agentMarkdown`: Enable per-post `.md` mirrors, `llms.txt`, and `rel="alternate"` links. Default `true`; set `false` to disable.
 - `agentAttribution`: Path to the Markdown template for agent mirror headers. Defaults to `source/_includes/agent-attribution.md`.

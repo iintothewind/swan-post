@@ -45,8 +45,9 @@ program
 .command("deploy")
 .description("Rebuild the site and auto git add/commit/push to trigger GitHub Pages update")
 .option("-m, --message <message>", "Custom commit message")
+.option("-f, --force", "Force push from .deploy even when build output is unchanged")
 .action((options) => {
-deploy(options.message);
+deploy(options.message, options.force);
 });
 
 program

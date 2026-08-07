@@ -4,7 +4,7 @@ const fs = require("fs-extra");
 const { build } = require("./build");
 const { loadConfig } = require("./utils");
 
-function deploy(message) {
+function deploy(message, force) {
 const config = loadConfig();
 const repoUrl = config.deployTarget;
 if (!repoUrl) {
@@ -52,8 +52,10 @@ var status = execFileSync("git", ["-C", deployDir, "status", "--porcelain"], { e
 if (status) {
 execFileSync("git", ["-C", deployDir, "add", "-A"], { stdio: "inherit" });
 execFileSync("git", ["-C", deployDir, "commit", "-m", commitMsg], { stdio: "inherit" });
+}
+if (status || force) {
 execFileSync("git", ["-C", deployDir, "push", "--force"], { stdio: "inherit" });
-console.log("Pushed to GitHub Pages.");
+console.log(status ? "Pushed to GitHub Pages." : "No file changes; force-pushed to GitHub Pages.");
 } else {
 console.log("No file changes, skipping push.");
 }
