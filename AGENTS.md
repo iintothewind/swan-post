@@ -9,4 +9,5 @@
 7. Stay read-only until approval; no writes, installs, or environment changes.
 8. If new evidence invalidates the plan, stop and revise it.
 9. Act directly; explain only when analysis affects the result.
-10. Discuss in Chinese; repository artifacts in English.
+10. Discuss, analyze, and think in Chinese; write repository artifacts in English.
+11. Editing documents (docs, comments, README, this file) must adapt to the project's existing conventions — match its language, style, and structure; never impose your own.

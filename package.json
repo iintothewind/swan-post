@@ -14,16 +14,14 @@
     "test": "node scripts/cli.js build && node --test test/test-discovery.js test/test-markdown.js test/test-templates.js test/test-feed.js test/test-post-meta.js test/test-agent-surfaces.js && bash test/test-attribution.sh"
   },
   "dependencies": {
+    "@xmldom/xmldom": "^0.9.12",
     "commander": "^12.0.0",
     "fs-extra": "^11.0.0",
     "gray-matter": "^4.0.3",
     "katex": "^0.18.1",
     "markdown-it": "^14.0.0",
     "markdown-it-texmath": "^1.0.0",
-    "mermaid": "^11.16.1"
-  },
-  "devDependencies": {
-    "@xmldom/xmldom": "^0.9.12",
+    "mermaid": "^11.16.1",
     "xmllint-wasm": "^5.3.0"
   }
 }

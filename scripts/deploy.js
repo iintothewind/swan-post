@@ -4,7 +4,7 @@ const fs = require("fs-extra");
 const { build } = require("./build");
 const { loadConfig } = require("./utils");
 
-function deploy(message, force) {
+async function deploy(message, force) {
 const config = loadConfig();
 const repoUrl = config.deployTarget;
 if (!repoUrl) {
@@ -24,7 +24,7 @@ const commitMsg = message || ("deploy: " + new Date().toISOString());
 try {
 // Step 1: Build
 console.log("== Step 1: Rebuild site ==");
-build();
+await build();
 
 // Step 2: Clone/pull the target Pages repo
 console.log("== Step 2: Sync GitHub Pages repo ==");

@@ -7,6 +7,7 @@ buildAgentMarkdown, writeAgentMarkdownFile, renderPostAlternateLink,
 writeSiteDiscoveryArtifacts, renderFeedXml, renderFeedJson, renderPostSocialMeta,
 renderLayout, renderPostLinkList
 } = require("./utils");
+const { validateFeedXml, validateFeedJson, checkFeedParity } = require("./lib/feed-validate");
 
 // Generate the homepage docs/index.html.
 // postsIndexSorted must be the posts.json entries array already sorted by date descending
@@ -55,7 +56,7 @@ headHtml: '<meta name="robots" content="noindex">'
 fs.writeFileSync(path.join(docsDir, "404.html"), html, "utf-8");
 }
 
-function build() {
+async function build() {
 const config = loadConfig();
 const docsDir = path.join(process.cwd(), "docs");
 
@@ -124,8 +125,31 @@ writeSiteDiscoveryArtifacts(docsDir, config, sortedIndex);
 // buildFeedItems, so they cannot disagree on which posts they carry. Full parsed
 // posts are needed because contentHtml/author are not in the posts.json index.
 // renderFeedXml/renderFeedJson sort by date descending and keep the newest 50.
-fs.writeFileSync(path.join(docsDir, "feed.xml"), renderFeedXml(config, posts), "utf-8");
-fs.writeFileSync(path.join(docsDir, "feed.json"), renderFeedJson(config, posts), "utf-8");
+// Capture the rendered feeds once; validate the exact strings written to disk below.
+const xmlText = renderFeedXml(config, posts);
+const jsonText = renderFeedJson(config, posts);
+fs.writeFileSync(path.join(docsDir, "feed.xml"), xmlText, "utf-8");
+fs.writeFileSync(path.join(docsDir, "feed.json"), jsonText, "utf-8");
+
+// Gate the build: deploy force-pushes docs/, so a malformed or self-inconsistent
+// feed must fail here, before anything is published. validateFeedXml/validateFeedJson
+// run the same offline spec rules the tests do; checkFeedParity proves the two
+// serializers — built from one source in buildFeedItems — still agree on item ids
+// and order. Errors throw here; the CLI turns that into a non-zero exit, and
+// deploy/gist-sync catch the same throw before they push anything.
+const xmlRes = await validateFeedXml(xmlText, { config, docsDir });
+const jsonRes = await validateFeedJson(jsonText, { config, docsDir });
+const parityRes = checkFeedParity(xmlText, jsonText, { config, docsDir });
+// Warnings are non-fatal, but they must not vanish: "could not read posts.json"
+// means the item-cap check silently did not run, and a feed truncated to the
+// 50-post cap is exactly the kind of thing nobody notices until a reader does.
+xmlRes.warnings.concat(jsonRes.warnings).forEach(function (w) {
+console.warn("feed warning: " + w);
+});
+const feedErrors = xmlRes.errors.concat(jsonRes.errors, parityRes.errors);
+if (feedErrors.length > 0) {
+throw new Error("feed validation failed:\n" + feedErrors.join("\n"));
+}
 console.log(`Build complete, ${posts.length} posts, output to docs/`);
 }
 

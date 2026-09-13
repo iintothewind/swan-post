@@ -14,8 +14,13 @@ program
 program
 .command("build")
 .description("Full build of the entire site to docs/ directory")
-.action(() => {
-build();
+.action(async () => {
+try {
+await build();
+} catch (err) {
+console.error("Build failed:", err.message);
+process.exit(1);
+}
 });
 
 program
@@ -46,8 +51,16 @@ program
 .description("Rebuild the site and auto git add/commit/push to trigger GitHub Pages update")
 .option("-m, --message <message>", "Custom commit message")
 .option("-f, --force", "Force push from .deploy even when build output is unchanged")
-.action((options) => {
-deploy(options.message, options.force);
+.action(async (options) => {
+// deploy() handles its own build/sync/push failures, but anything thrown before
+// that try block (config loading) would otherwise surface as an unhandled
+// rejection with no clean exit code.
+try {
+await deploy(options.message, options.force);
+} catch (err) {
+console.error("Deploy failed:", err.message);
+process.exit(1);
+}
 });
 
 program

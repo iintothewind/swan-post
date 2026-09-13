@@ -149,7 +149,7 @@ async function syncGists(userOption) {
       + "added " + stats.added + ", updated " + stats.updated + ", unchanged " + stats.unchanged + ", removed " + stats.removed + ", "
       + "skipped " + stats.skipped + " (no Markdown file)");
     console.log("== Rebuilding site ==");
-    build();
+    await build();
   } catch (err) {
     console.error("Gist sync failed:", err.message);
     process.exit(1);
