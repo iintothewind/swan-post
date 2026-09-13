@@ -4,7 +4,7 @@ const {
 loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
 listPostFiles, renderTagsHtml, renderRecentPostsHtml, savePostsIndex, buildPostIncludes,
 buildAgentMarkdown, writeAgentMarkdownFile, renderPostAlternateLink,
-writeSiteDiscoveryArtifacts, renderFeedXml
+writeSiteDiscoveryArtifacts, renderFeedXml, renderPostSocialMeta, renderLayout
 } = require("./utils");
 
 // Generate the homepage docs/index.html.
@@ -14,7 +14,6 @@ writeSiteDiscoveryArtifacts, renderFeedXml
 // appear on the homepage as soon as they enter the recent N list.
 function renderHomepage(config, postsIndexSorted) {
 const docsDir = path.join(process.cwd(), "docs");
-const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
 const indexTpl = fs.readFileSync(path.join(process.cwd(), "templates", "index.html"), "utf-8");
 
 const recentCount = config.recentPostsCount || 10;
@@ -25,13 +24,9 @@ SITE_TITLE: config.title,
 SITE_DESCRIPTION: config.description,
 RECENT_POSTS_HTML: recentPostsHtml
 });
-const homeHtml = renderTemplate(layoutTpl, {
-  PAGE_TITLE: "Home",
-  SITE_TITLE: config.title,
-  BASE_URL: config.baseUrl,
-  SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
-  POST_ALTERNATE_MD: "",
-  CONTENT: homeContent
+const homeHtml = renderLayout(config, {
+  pageTitle: "Home",
+  content: homeContent
 });
 fs.writeFileSync(path.join(docsDir, "index.html"), homeHtml, "utf-8");
 }
@@ -47,8 +42,8 @@ fs.ensureDirSync(path.join(docsDir, "posts"));
   // 2. Copy static assets (css/js/prism from assets/, katex + mermaid from node_modules)
   copyStaticAssets(docsDir, true);
 
-// 3. Read post templates (layout and homepage templates are read later during homepage generation, handled internally by renderHomepage)
-const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
+// 3. Read post template (the layout is rendered by renderLayout; the homepage
+// template is read later, internally by renderHomepage)
 const postTpl = fs.readFileSync(path.join(process.cwd(), "templates", "post.html"), "utf-8");
 
 // 4. Parse all markdown posts
@@ -70,13 +65,11 @@ POST_FOOTER_HTML: footerHtml,
 BASE_URL: config.baseUrl
 });
 const agentMd = buildAgentMarkdown(config, post);
-const fullHtml = renderTemplate(layoutTpl, {
-  PAGE_TITLE: post.title,
-  SITE_TITLE: config.title,
-  BASE_URL: config.baseUrl,
-  SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
-  POST_ALTERNATE_MD: renderPostAlternateLink(config, post.slug),
-  CONTENT: postHtml
+const fullHtml = renderLayout(config, {
+  pageTitle: post.title,
+  content: postHtml,
+  postAlternateMd: renderPostAlternateLink(config, post.slug),
+  postMetaHtml: renderPostSocialMeta(post, config)
 });
 fs.writeFileSync(path.join(docsDir, "posts", post.slug + ".html"), fullHtml, "utf-8");
 writeAgentMarkdownFile(docsDir, post, agentMd);

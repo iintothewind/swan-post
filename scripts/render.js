@@ -4,7 +4,7 @@ const {
 loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets, listPostFiles,
 renderTagsHtml, loadPostsIndex, savePostsIndex, buildPostIncludes,
 buildAgentMarkdown, writeAgentMarkdownFile, renderPostAlternateLink,
-writeSiteDiscoveryArtifacts, renderFeedXml
+writeSiteDiscoveryArtifacts, renderFeedXml, renderPostSocialMeta, renderLayout
 } = require("./utils");
 const { renderHomepage } = require("./build");
 
@@ -24,7 +24,6 @@ const post = parseMarkdownFile(absPath);
 
 // 3. Render the post HTML and write to docs/posts/<slug>.html
 const postTpl = fs.readFileSync(path.join(process.cwd(), "templates", "post.html"), "utf-8");
-const layoutTpl = fs.readFileSync(path.join(process.cwd(), "templates", "layout.html"), "utf-8");
 
 const { headerHtml, bodyMetaHtml, footerHtml, bodyAttributionHtml } = buildPostIncludes(config, post);
 const postHtml = renderTemplate(postTpl, {
@@ -39,13 +38,11 @@ POST_FOOTER_HTML: footerHtml,
 BASE_URL: config.baseUrl
 });
 const agentMd = buildAgentMarkdown(config, post);
-const fullHtml = renderTemplate(layoutTpl, {
-  PAGE_TITLE: post.title,
-  SITE_TITLE: config.title,
-  BASE_URL: config.baseUrl,
-  SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
-  POST_ALTERNATE_MD: renderPostAlternateLink(config, post.slug),
-  CONTENT: postHtml
+const fullHtml = renderLayout(config, {
+  pageTitle: post.title,
+  content: postHtml,
+  postAlternateMd: renderPostAlternateLink(config, post.slug),
+  postMetaHtml: renderPostSocialMeta(post, config)
 });
 const outputPath = path.join(docsDir, "posts", post.slug + ".html");
 fs.writeFileSync(outputPath, fullHtml, "utf-8");

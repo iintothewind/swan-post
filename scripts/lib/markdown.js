@@ -47,8 +47,52 @@ count++;
 return out;
 }
 
+// Reduce rendered post HTML to plain text: replace math/diagram markup with
+// placeholders first, then strip HTML tags → decode entities (using markdown-it's
+// built-in unescapeAll to avoid a hand-rolled incomplete entity table) → normalize
+// whitespace → trim. The placeholders keep server-rendered KaTeX markup and Mermaid
+// source from flooding the result with broken text.
+// Shared by the excerpt and the meta description so both see the same text.
+function plainTextFromHtml(html) {
+const md = getMd();
+const source = String(html || "")
+.replace(/<section[^>]*>\s*<eqn>[\s\S]*?<\/eqn>[\s\S]*?<\/section>/g, " [math] ")
+.replace(/<eq>[\s\S]*?<\/eq>/g, " [math] ")
+.replace(/<div class="mermaid">[\s\S]*?<\/div>/g, " [diagram] ");
+return md.utils.unescapeAll(source.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
+}
+
+// First <p> block that actually has text in it, or "" when the post has none.
+// Must run BEFORE plainTextFromHtml: that helper collapses all whitespace to single
+// spaces, so paragraph boundaries are only recoverable from the raw HTML.
+function firstParagraphHtml(html) {
+const blocks = String(html || "").match(/<p\b[^>]*>[\s\S]*?<\/p>/gi) || [];
+for (const block of blocks) {
+if (block.replace(/<[^>]+>/g, "").trim()) return block;
+}
+return "";
+}
+
+// ~160 chars of the post's opening paragraph, for <meta name="description">.
+// Falls back to the whole post's text, then to the excerpt.
+const META_DESCRIPTION_LENGTH = 160;
+function getPostMetaDescription(post) {
+const contentHtml = (post && post.contentHtml) || "";
+const first = plainTextFromHtml(firstParagraphHtml(contentHtml));
+if (first) return truncateGraphemes(first, META_DESCRIPTION_LENGTH);
+const whole = plainTextFromHtml(contentHtml);
+if (whole) return truncateGraphemes(whole, META_DESCRIPTION_LENGTH);
+return (post && post.excerpt) || "";
+}
+
+// Escape text for embedding in HTML — the same helper markdown-it uses internally.
+function escapeHtml(text) {
+return getMd().utils.escapeHtml(String(text == null ? "" : text));
+}
+
 // Parse a single markdown file, returns:
-// { title, date, formattedDate, tags, categories, slug, content, contentHtml, excerpt, showHeader, showFooter }
+// { title, date, formattedDate, tags, categories, slug, content, contentHtml, excerpt,
+//   author, source, canonical, license, showHeader, showFooter }
 // slug is derived from the filename by stripping the .md extension
 function parseMarkdownFile(filePath) {
 const md = getMd();
@@ -56,17 +100,9 @@ const raw = fs.readFileSync(filePath, "utf-8");
 const { data, content } = matter(raw);
 const slug = path.basename(filePath, ".md");
 const contentHtml = wrapTablesInScrollContainer(md.render(content));
-// Generate excerpt: replace math/diagram markup with placeholders first, then strip HTML tags → decode
-// entities (& → &, using markdown-it's built-in unescapeAll to avoid a hand-rolled incomplete entity
-// table) → normalize whitespace → truncate to 100 visible graphemes (Intl.Segmenter splits by
-// user-perceived characters, won't cut in the middle of an emoji / surrogate pair). The placeholders
-// keep server-rendered KaTeX markup and Mermaid source from flooding the excerpt with broken text.
-const excerptSource = contentHtml
-.replace(/<section[^>]*>\s*<eqn>[\s\S]*?<\/eqn>[\s\S]*?<\/section>/g, " [math] ")
-.replace(/<eq>[\s\S]*?<\/eq>/g, " [math] ")
-.replace(/<div class="mermaid">[\s\S]*?<\/div>/g, " [diagram] ");
-const plainText = md.utils.unescapeAll(excerptSource.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
-const excerpt = truncateGraphemes(plainText, 100);
+// Truncate to 100 visible graphemes (Intl.Segmenter splits by user-perceived
+// characters, won't cut in the middle of an emoji / surrogate pair).
+const excerpt = truncateGraphemes(plainTextFromHtml(contentHtml), 100);
 const rawDate = data.date instanceof Date ? data.date : (data.date ? new Date(data.date) : null);
 const dateStr = rawDate ? rawDate.toISOString() : "";
 // Display date uses UTC YYYY-MM-DD: js-yaml parses front-matter dates without timezone as UTC (YAML 1.1 spec),
@@ -82,6 +118,8 @@ tags: Array.isArray(data.tags) ? data.tags : (typeof data.tags === "string" && d
 categories: Array.isArray(data.categories) ? data.categories : (typeof data.categories === "string" && data.categories.trim() ? [data.categories] : []),
 author: data.author ? String(data.author) : "",
 source: data.source ? String(data.source) : "",
+canonical: data.canonical ? String(data.canonical) : "",
+license: data.license ? String(data.license) : "",
 slug,
 content,
 contentHtml,
@@ -130,4 +168,9 @@ parseMarkdownFile,
 renderTagsHtml,
 renderRecentPostsHtml,
 truncateGraphemes,
+plainTextFromHtml,
+firstParagraphHtml,
+getPostMetaDescription,
+escapeHtml,
+META_DESCRIPTION_LENGTH,
 };
