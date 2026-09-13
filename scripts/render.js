@@ -1,10 +1,10 @@
 const fs = require("fs-extra");
 const path = require("path");
 const {
-loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
+loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets, listPostFiles,
 renderTagsHtml, loadPostsIndex, savePostsIndex, buildPostIncludes,
 buildAgentMarkdown, writeAgentMarkdownFile, renderPostAlternateLink,
-writeSiteDiscoveryArtifacts
+writeSiteDiscoveryArtifacts, renderFeedXml
 } = require("./utils");
 const { renderHomepage } = require("./build");
 
@@ -77,6 +77,9 @@ const sortedIndex = savePostsIndex(index);
 renderHomepage(config, sortedIndex);
 writeSiteDiscoveryArtifacts(docsDir, config, sortedIndex);
 
+// 6. Refresh the RSS feed — this incremental path only parsed the one changed file above,
+// so re-parse every post to source each item's contentHtml/author (not carried in posts.json).
+fs.writeFileSync(path.join(docsDir, "feed.xml"), renderFeedXml(config, listPostFiles().map(parseMarkdownFile)), "utf-8");
 console.log(`Rendered: ${outputPath}`);
 console.log(`Index updated: docs/posts.json`);
 console.log(`Homepage refreshed: docs/index.html`);

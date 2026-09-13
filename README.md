@@ -13,11 +13,12 @@
 7. Agent-readable attribution (static GitHub Pages) — per-post Markdown mirrors (`docs/posts/<slug>.md`), site-wide `docs/llms.txt`, and `<link rel="alternate" type="text/markdown">` on post pages; no edge proxy or User-Agent routing required.
 8. Post-body author/source attribution — `author:` / `source:` lines at the top and bottom of every post body via configurable HTML fragments; same values prepended to agent `.md` mirrors.
 9. Crawler discovery — each build/render writes `docs/robots.txt` (allow all + sitemap link) and `docs/sitemap.xml` (homepage, every post HTML/MD mirror, and `llms.txt`).
+10. RSS feed — each build/render writes `docs/feed.xml` (RSS 2.0, newest 50 posts with full content in `content:encoded`) and adds `<link rel="alternate" type="application/rss+xml">` to every page's `<head>`.
 
 ## Non-Goals
 
 - No pagination
-- No comment system, no RSS, no search
+- No comment system, no search
 - No live-reload (hot reload)
 - No Chinese-to-pinyin slug generation
 - No User-Agent / TLS-based content negotiation (unlike TIME's live edge routing; see Agent-Readable Markdown below)
@@ -82,6 +83,7 @@ After build, agent mirrors are also available locally:
 - `http://localhost:8080/posts/<slug>.md`
 - `http://localhost:8080/robots.txt`
 - `http://localhost:8080/sitemap.xml`
+- `http://localhost:8080/feed.xml`
 
 ### Deploy to GitHub Pages
 
@@ -359,6 +361,7 @@ swan-post/
 │   ├── llms.txt            # Agent-readable site index (when agentMarkdown is on)
 │   ├── robots.txt          # Crawler policy + sitemap link
 │   ├── sitemap.xml         # URL index for crawlers/agents
+│   ├── feed.xml            # RSS 2.0 feed (newest 50 posts)
 │   └── posts/
 │       ├── <slug>.html
 │       └── <slug>.md       # Agent-readable mirror (when agentMarkdown is on)

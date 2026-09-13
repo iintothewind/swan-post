@@ -4,7 +4,7 @@ const {
 loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets,
 listPostFiles, renderTagsHtml, renderRecentPostsHtml, savePostsIndex, buildPostIncludes,
 buildAgentMarkdown, writeAgentMarkdownFile, renderPostAlternateLink,
-writeSiteDiscoveryArtifacts
+writeSiteDiscoveryArtifacts, renderFeedXml
 } = require("./utils");
 
 // Generate the homepage docs/index.html.
@@ -102,6 +102,9 @@ renderHomepage(config, sortedIndex);
 // 8. Agent-readable mirrors + crawler discovery (llms.txt, robots.txt, sitemap.xml)
 writeSiteDiscoveryArtifacts(docsDir, config, sortedIndex);
 
+// 9. RSS feed (docs/feed.xml) — full parsed posts carry contentHtml/author per item;
+// renderFeedXml sorts by date descending and keeps the newest 50 internally.
+fs.writeFileSync(path.join(docsDir, "feed.xml"), renderFeedXml(config, posts), "utf-8");
 console.log(`Build complete, ${posts.length} posts, output to docs/`);
 }
 

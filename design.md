@@ -18,8 +18,9 @@ Node.js static blog generator (Hexo replacement) → output in `docs/` → deplo
 | 6 | Body attribution: `author:` / `source:` in HTML + mirrors |
 | 7 | Crawler discovery: `robots.txt`, `sitemap.xml` (every build/render) |
 | 8 | KaTeX math (server) + Mermaid diagrams (client, on demand) |
+| 9 | RSS feed: `feed.xml` (RSS 2.0, newest 50) + head alternate link on every page |
 
-**Out of scope:** pagination, comments, RSS, search, live-reload, pinyin slugs, UA-based content negotiation.
+**Out of scope:** pagination, comments, search, live-reload, pinyin slugs, UA-based content negotiation.
 
 ---
 
@@ -47,7 +48,7 @@ flowchart LR
     IDX["posts.json"]
     AGT["posts/*.md + llms.txt"]
     CRAWL["robots.txt + sitemap.xml"]
-    STA["css/js/prism/katex/"]
+    FEED["feed.xml"]
   end
 
   MD --> U
@@ -84,8 +85,8 @@ flowchart TB
 | Module | Role |
 |--------|------|
 | `utils.js` | Markdown parse/render, templates, includes, agent mirrors, discovery artifacts |
-| `build.js` | Full rebuild: empty `docs/`, all posts, homepage, `writeSiteDiscoveryArtifacts` |
-| `render.js` | Single-post incremental update + homepage + discovery artifacts |
+| `build.js` | Full rebuild: empty `docs/`, all posts, homepage, `writeSiteDiscoveryArtifacts`, `feed.xml` |
+| `render.js` | Single-post incremental update + homepage + discovery artifacts + `feed.xml` refresh |
 | `deploy.js` | `build()` → clone/sync `.deploy/` → copy `docs/` → git push |
 | `gist-sync.js` | Fetch public gists → `source/_posts/` → `build()` |
 | `serve.js` | Static preview of `docs/` (MIME for `.md`, `.txt`, `.xml`) |
@@ -110,7 +111,13 @@ flowchart TB
 - **URLs:** all absolute links via `buildAbsoluteUrl(config, path)`.
 - **`agentMarkdown: false`:** skips `.md` mirrors and `llms.txt`; `robots.txt` / `sitemap.xml` still generated.
 
-### 1.4 Page layout
+### 1.4 RSS feed
+
+- Written directly by `build()` and `renderOne()` (not via `writeSiteDiscoveryArtifacts`): items need full parsed posts (`contentHtml`, per-post `author`) which slim `posts.json` entries do not carry.
+- Newest **50** posts, date descending; item: `title` / `link`+`guid isPermaLink` (permalink) / `pubDate` (RFC 2822 UTC) / `description` (excerpt) / `dc:creator` / `content:encoded` (rendered HTML in CDATA, `]]>`-split safe).
+- Namespaces on `<rss>`: `dc`, `content`, `atom` (self link → `/feed.xml`). Channel `pubDate`/`lastBuildDate` = newest item date.
+
+### 1.5 Page layout
 
 ```mermaid
 flowchart LR
@@ -167,7 +174,7 @@ swan-post/
 │       └── test-templates.js   # Unit tests (template engine)
 └── docs/                    # Build output (gitignored; pushed via deploy)
     ├── index.html, posts.json
-    ├── llms.txt, robots.txt, sitemap.xml
+    ├── llms.txt, robots.txt, sitemap.xml, feed.xml
     ├── katex/, css/, js/, prism/
     └── posts/<slug>.html|.md
 ```
@@ -321,6 +328,12 @@ Array sorted by `date` descending. Each entry:
 | `writeSiteDiscoveryArtifacts(docsDir, config, postsIndex)` | Orchestrates llms + robots + sitemap |
 | `escapeXml(str)` | Sitemap XML escaping |
 
+### RSS feed
+
+| Export | Contract |
+|--------|----------|
+| `renderFeedXml(config, posts)` | Full parsed post objects (index entries lack `contentHtml`/`author`) → RSS 2.0 string; sorts internally, caps at 50, CDATA-wraps `content:encoded` |
+
 ---
 
 ## 9. Build & render flows
@@ -333,14 +346,14 @@ Array sorted by `date` descending. Each entry:
 4. Write `posts.json` (sorted)
 5. `renderHomepage(config, sortedIndex)`
 6. `writeSiteDiscoveryArtifacts(docsDir, config, sortedIndex)`
-
+7. Write `feed.xml` (newest 50 posts)
 ### 9.2 `renderOne(file)` sequence
 
 1. Ensure `docs/posts/`; `copyStaticAssets(docs, false)` (non-destructive)
 2. Parse single file → write HTML + agent `.md`
 3. Upsert `posts.json` entry → sort → save
 4. `renderHomepage` + `writeSiteDiscoveryArtifacts`
-
+5. Refresh `feed.xml` (re-parses all posts for per-item `contentHtml`/`author`)
 ### 9.3 `deploy(message, force)`
 
 `build()` → clone/pull `.deploy/` → replace contents with `docs/` → commit if changed → `git push --force`. Uses `execFileSync` (no shell injection).
@@ -356,7 +369,7 @@ Fetch user gists → first `.md` file each → write `YYYY-MM-DD-<gist_id>.md` �
 | Command | Action |
 |---------|--------|
 | `build` | Full site rebuild |
-| `render <file>` | Single post + index + homepage + discovery |
+| `render <file>` | Single post + index + homepage + discovery + feed refresh |
 | `new <slug> [-t title]` | Scaffold post with attribution front-matter |
 | `serve [-p port]` | Preview `docs/` |
 | `deploy [-m msg] [-f]` | Build + push to Pages repo |
@@ -387,6 +400,7 @@ Hard assertions: `rel="alternate"`, `llms.txt` completeness, `robots.txt`, `site
 - [ ] Includes + camouflage + `footer: false` opt-out
 - [ ] Agent mirrors + `llms.txt` + alternate link when `agentMarkdown: true`
 - [ ] `robots.txt` + `sitemap.xml` on every build/render
+- [ ] `feed.xml` valid RSS 2.0, exactly 50 items; every page head has the RSS alternate link
 - [ ] `npm test` passes
 - [ ] `baseUrl` empty and non-empty paths resolve correctly
 - [ ] `docs/` gitignored; deploy pushes to separate Pages repo
@@ -400,3 +414,4 @@ Hard assertions: `rel="alternate"`, `llms.txt` completeness, `robots.txt`, `site
 - Manual dark-mode toggle (auto via `prefers-color-scheme` exists for Mermaid)
 - Category sidebar view
 - ~~Split `utils.js` into focused modules~~ ✅ done (P3: `scripts/lib/` — config, posts-index, static-assets, post-entry, markdown, attribution, templates, agent-mirrors, discovery-artifacts)
+- ~~RSS feed (`feed.xml`, newest 50)~~ ✅ done (P0: `scripts/lib/feed.js` — `renderFeedXml`; head alternate link in `layout.html`)

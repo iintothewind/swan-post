@@ -11,5 +11,6 @@ module.exports = {
 ...require("./lib/templates"),
 ...require("./lib/agent-mirrors"),
 ...require("./lib/discovery-artifacts"),
+...require("./lib/feed"),
 ...require("./lib/post-entry"),
 };

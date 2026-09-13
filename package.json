@@ -11,7 +11,7 @@
     "render": "node scripts/cli.js render",
     "serve": "node scripts/cli.js serve",
     "deploy": "node scripts/cli.js deploy",
-    "test": "node scripts/cli.js build && node --test test/test-discovery.js test/test-markdown.js test/test-templates.js && bash test/test-attribution.sh"
+    "test": "node scripts/cli.js build && node --test test/test-discovery.js test/test-markdown.js test/test-templates.js test/test-feed.js && bash test/test-attribution.sh"
   },
   "dependencies": {
     "commander": "^12.0.0",
@@ -21,5 +21,9 @@
     "markdown-it": "^14.0.0",
     "markdown-it-texmath": "^1.0.0",
     "mermaid": "^11.16.1"
+  },
+  "devDependencies": {
+    "@xmldom/xmldom": "^0.9.12",
+    "xmllint-wasm": "^5.3.0"
   }
 }
