@@ -1,417 +1,104 @@
-# swan-post (swp) — Design Document
+# swan-post (swp) — Design
 
-> Architecture reference for humans and coding agents. **Source of truth for implementation is the repo itself** (`scripts/`, `templates/`, `assets/`). This document describes behavior and contracts — it does not embed CSS, JavaScript, or HTML.
+> Behavior, decisions and invariants. **The repo is the source of truth for implementation** — this document deliberately does not list modules, exports or file layouts, because those change. It records the *why* and the rules that are easy to break.
 
----
+## Goals
 
-## 0. Goals
+Node.js static blog generator → `docs/` → GitHub Pages. Content is rendered at build time; the browser only enhances it (sidebar, diagrams).
 
-Node.js static blog generator (Hexo replacement) → output in `docs/` → deploy to GitHub Pages.
+**Not planned:** pagination, comments, search, live-reload, pinyin slugs, User-Agent or TLS-based content negotiation.
 
-| # | Feature |
-|---|---------|
-| 1 | Fixed layout: overlay sidebar (timeline / tags), full-width content |
-| 2 | Hexo-style Markdown (`gray-matter` front-matter) |
-| 3 | Incremental `render` — single post without full rebuild |
-| 4 | Post header/footer HTML fragments (`source/_includes/`) |
-| 5 | Agent mirrors: `.md` per post, `llms.txt`, `rel="alternate"` |
-| 6 | Body attribution: `author:` / `source:` in HTML + mirrors |
-| 7 | Crawler discovery: `robots.txt`, `sitemap.xml` (every build/render) |
-| 8 | KaTeX math (server) + Mermaid diagrams (client, on demand) |
-| 9 | RSS feed: `feed.xml` (RSS 2.0, newest 50) + head alternate link on every page |
+## Architecture
 
-**Out of scope:** pagination, comments, search, live-reload, pinyin slugs, UA-based content negotiation.
+Two entry points, one disposable output directory:
 
----
+- `build` — full rebuild; empties `docs/` first.
+- `render <file>` — renders one post, then refreshes everything derived from the post list: index, homepage, discovery artifacts, both feeds, and the 404 page. "Incremental" means *other posts are not re-rendered*, not that derived artifacts are skipped.
 
-## 1. Architecture
+`docs/` is generated and gitignored. Anything hand-edited there is lost on the next build.
 
-### 1.1 Build pipeline
+## Key decisions
 
-```mermaid
-flowchart LR
-  subgraph input
-    MD["source/_posts/*.md"]
-    CFG["blog.config.json"]
-    TPL["templates/"]
-    AST["assets/"]
-  end
+**One source per artifact family.** Discovery artifacts (llms.txt, llms-full.txt, robots.txt, sitemap.xml) are all derived from the same resolved post list. Both feeds are serialized from the same normalized item builder. Two independent generators for the same data is exactly how they drift apart.
 
-  subgraph scripts
-    U["utils.js"]
-    B["build.js"]
-    R["render.js"]
-  end
+**One layout choke point.** The template engine only substitutes keys it is given and leaves the rest verbatim, so a forgotten variable ships `{{PLACEHOLDER}}` straight into production HTML. Every page-shell variable is therefore set in the single layout function; new head/shell variables go through it, never through a hand-rolled render call.
 
-  subgraph output["docs/"]
-    HTML["index.html + posts/*.html"]
-    IDX["posts.json"]
-    AGT["posts/*.md + llms.txt"]
-    CRAWL["robots.txt + sitemap.xml"]
-    FEED["feed.xml"]
-  end
+**Conditional output is built in code.** The template engine has no conditionals, so anything that must vanish entirely (a license line with no license configured) is produced as a whole string in JS rather than as an empty row in a template.
 
-  MD --> U
-  CFG --> U
-  TPL --> B
-  TPL --> R
-  AST --> U
-  U --> B
-  U --> R
-  B --> output
-  R --> output
-```
+**Markdown mirrors are read back, not re-rendered.** llms-full.txt concatenates the already-generated per-post `.md`, so mirror, index and corpus cannot disagree.
 
-### 1.2 Module responsibilities
+**Absolute URLs throughout generated output.** Templates use `{{BASE_URL}}`; code uses the site-URL builder. The 404 page is served at arbitrary path depth, where relative links would resolve against the wrong base.
 
-```mermaid
-flowchart TB
-  CLI["cli.js"] --> B["build.js"]
-  CLI --> R["render.js"]
-  CLI --> N["new-post.js"]
-  CLI --> S["serve.js"]
-  CLI --> D["deploy.js"]
-  CLI --> G["gist-sync.js"]
+**Feeds need fully parsed posts**, not the slim index entries — full content and per-post author are not in the index. The incremental path re-parses every post for this reason.
 
-  B --> U["utils.js"]
-  R --> U
-  R --> B
-  N --> U
-  D --> B
-  G --> B
-  G --> U
-```
+**Optional features are opt-out, not opt-in.** Agent mirrors, license declarations and social meta render only when configured, so a minimal config still builds.
 
-| Module | Role |
-|--------|------|
-| `utils.js` | Markdown parse/render, templates, includes, agent mirrors, discovery artifacts |
-| `build.js` | Full rebuild: empty `docs/`, all posts, homepage, `writeSiteDiscoveryArtifacts`, `feed.xml` |
-| `render.js` | Single-post incremental update + homepage + discovery artifacts + `feed.xml` refresh |
-| `deploy.js` | `build()` → clone/sync `.deploy/` → copy `docs/` → git push |
-| `gist-sync.js` | Fetch public gists → `source/_posts/` → `build()` |
-| `serve.js` | Static preview of `docs/` (MIME for `.md`, `.txt`, `.xml`) |
+## Outputs
 
-### 1.3 Crawler & agent discovery
+| Artifact | Purpose |
+|---|---|
+| `posts/<slug>.html`, `index.html` | Site pages |
+| `posts.json` | Slim index (title, date, tags, slug, url, excerpt) — drives the sidebar |
+| `posts/<slug>.md` | Markdown mirror per post |
+| `llms.txt` | Post index with mirror URLs |
+| `llms-full.txt` | Every mirror concatenated, newest first |
+| `robots.txt`, `sitemap.xml` | Crawler discovery |
+| `feed.xml` (RSS 2.0), `feed.json` (JSON Feed 1.1) | Newest 50 posts, full content, from one source |
+| `404.html` | Fallback that routes lost readers back to `posts.json` / `llms.txt` |
 
-```mermaid
-flowchart TB
-  SRC["source/_posts/*.md"] --> RES["resolveLlmsEntries()"]
-  IDX["posts.json"] --> RES
-  RES --> LLMS["llms.txt"]
-  RES --> MAP["sitemap.xml"]
-  RES --> ROB["robots.txt"]
-  RES --> MD["posts/slug.md"]
-  HTML["posts/slug.html"] --> ALT["rel=alternate markdown"]
-  W["writeSiteDiscoveryArtifacts()"] --> LLMS
-  W --> MAP
-  W --> ROB
-```
+Sitemap intentionally omits the `.md` mirrors and `llms-full.txt`: search engines do not index plain text, and `llms.txt` is the right entry point for those surfaces.
 
-- **Authoritative post list:** `source/_posts` (fast-path reuses `postsIndex` when slugs match).
-- **URLs:** all absolute links via `buildAbsoluteUrl(config, path)`.
-- **`agentMarkdown: false`:** skips `.md` mirrors and `llms.txt`; `robots.txt` / `sitemap.xml` still generated.
+## Invariants
 
-### 1.4 RSS feed
+Things that are easy to break and expensive to notice:
 
-- Written directly by `build()` and `renderOne()` (not via `writeSiteDiscoveryArtifacts`): items need full parsed posts (`contentHtml`, per-post `author`) which slim `posts.json` entries do not carry.
-- Newest **50** posts, date descending; item: `title` / `link`+`guid isPermaLink` (permalink) / `pubDate` (RFC 2822 UTC) / `description` (excerpt) / `dc:creator` / `content:encoded` (rendered HTML in CDATA, `]]>`-split safe).
-- Namespaces on `<rss>`: `dc`, `content`, `atom` (self link → `/feed.xml`). Channel `pubDate`/`lastBuildDate` = newest item date.
+- **Dates are format-specific.** RSS uses RFC 822, JSON Feed uses RFC 3339. An unparseable date yields an empty field, never an `Invalid Date` string.
+- **Feed ids are permalinks.** Stable and equal to the item URL, in both formats.
+- **Both feeds agree** on item ids and their order — asserted in tests.
+- **The three indexes agree** on post count: llms.txt == posts.json == sitemap.xml.
+- **Only same-site URLs are link-checked.** llms.txt descriptions embed external references; they are not this site's responsibility.
+- **CI checks the locally built output**, not the live site. The source repo is not the Pages repo and pushing here publishes nothing, so a live check would fail on every new post until someone deploys.
+- **External links inside index descriptions are never fetched.**
+- **`agentMarkdown: false`** drops mirrors, llms.txt and llms-full.txt; robots.txt and sitemap.xml still generate.
 
-### 1.5 Page layout
+## Configuration
 
-```mermaid
-flowchart LR
-  subgraph sidebar["Sidebar (overlay, hidden by default)"]
-    TL["Timeline tab"]
-    TG["Tags tab"]
-  end
-
-  subgraph main["Content"]
-    HOME["index.html — server-rendered recent N"]
-    POST["posts/slug.html — rendered body"]
-  end
-
-  BTN["☰ toggle"] --> sidebar
-  JS["main.js"] -->|fetch| PJ["posts.json"]
-  PJ --> TL
-  PJ --> TG
-```
-
-- Homepage recent posts: **server-rendered** in `build.js` / `render.js` (not async JS).
-- Sidebar: client-side from `posts.json`; capped by `sidebarPostCount`.
-
----
-
-## 2. Tech stack
-
-- **Runtime:** Node.js ≥ 18, **CommonJS** only
-- **Dependencies** (see `package.json`): `commander`, `gray-matter`, `markdown-it`, `markdown-it-texmath`, `katex`, `mermaid`, `fs-extra`
-- **No extra packages** beyond those seven
-
----
-
-## 3. Directory structure
-
-```
-swan-post/
-├── blog.config.json
-├── source/
-│   ├── _posts/              # Markdown posts
-│   └── _includes/           # HTML/MD fragments (header, footer, attribution)
-├── templates/               # layout.html, index.html, post.html
-├── assets/                  # css/style.css, js/main.js, prism/
-├── scripts/
-│   ├── cli.js, utils.js, build.js, render.js
-│   ├── new-post.js, serve.js, deploy.js, gist-sync.js
-│   ├── lib/                  # Focused modules (P3 split)
-│   │   ├── config.js, posts-index.js, static-assets.js
-│   │   ├── post-entry.js, markdown.js, attribution.js
-│   │   ├── templates.js, agent-mirrors.js, discovery-artifacts.js
-│   └── test/                  # All tests (unit + acceptance)
-│       ├── test-attribution.sh # Acceptance (D1–D5 + crawler)
-│       ├── test-discovery.js   # Unit tests (robots/sitemap helpers)
-│       ├── test-markdown.js    # Unit tests (markdown rendering)
-│       └── test-templates.js   # Unit tests (template engine)
-└── docs/                    # Build output (gitignored; pushed via deploy)
-    ├── index.html, posts.json
-    ├── llms.txt, robots.txt, sitemap.xml, feed.xml
-    ├── katex/, css/, js/, prism/
-    └── posts/<slug>.html|.md
-```
-
-Deploy: `docs/` → separate Pages repo (`deployTarget` in config). Source repo and Pages repo are independent.
-
----
-
-## 4. Configuration (`blog.config.json`)
+`blog.config.json` — only what changes behavior:
 
 | Field | Purpose |
-|-------|---------|
+|---|---|
 | `title`, `author`, `description` | Site metadata |
-| `baseUrl` | `""` for user pages root; `"/reponame"` for project pages |
-| `siteUrl` | Canonical URL (no trailing slash); used by discovery artifacts |
-| `recentPostsCount` | Homepage recent list (default 10) |
-| `sidebarPostCount` | Sidebar timeline cap (default 200) |
-| `postHeader`, `postFooter` | Include paths for post shell |
-| `postBodyMeta`, `postBodyAttribution` | Visible / camouflage body attribution |
-| `postAuthor`, `postSource` | Default `author:` / `source:` values |
-| `agentMarkdown` | Enable `.md` mirrors + `llms.txt` + alternate link (default true) |
-| `agentAttribution` | Mirror header template path |
-| `githubUser`, `deployTarget` | Gist sync + Pages deploy SSH URL |
+| `siteUrl` | Canonical public URL, no trailing slash |
+| `baseUrl` | `""` for user pages, `"/reponame"` for project pages |
+| `license`, `licenseUrl` | Optional; drives llms.txt, post footer and mirror headers |
+| `recentPostsCount`, `sidebarPostCount` | Homepage list and sidebar cap |
+| `postHeader`, `postFooter`, `postBodyMeta`, `postBodyAttribution` | Include fragment paths |
+| `postAuthor`, `postSource` | Defaults for attribution |
+| `agentMarkdown`, `agentAttribution` | Mirrors on/off and their header template |
+| `githubUser`, `deployTarget` | Gist sync and Pages repo |
+| `llmsFullMaxPosts` | Optional cap for llms-full.txt |
 
-All template static links use `{{BASE_URL}}` — never hardcode paths.
+Deployment is a separate Pages repo; `deploy` builds, replaces its contents with `docs/`, commits and force-pushes. The source repo and Pages repo are independent.
 
----
+## Content model
 
-## 5. Content model
+`source/_posts/<slug>.md`, parsed with `gray-matter`.
 
-### 5.1 Post filename & front-matter
+| Front-matter | Notes |
+|---|---|
+| `title`, `date` | Required; dates parse as UTC |
+| `tags`, `categories` | Optional arrays |
+| `author`, `source` | Override site defaults |
+| `canonical`, `license` | Optional per-post overrides |
+| `header`, `footer` | `false` opts out of includes |
 
-- File: `source/_posts/<slug>.md` — slug is ASCII `[a-z0-9-]+` (CLI-provided).
-- Parse with `gray-matter` only.
+Markdown extensions: `$…$` / `$$…$$` → server-rendered KaTeX; ```` ```mermaid ```` → client-rendered diagram (bundle loads only on pages that have one); other fences → Prism. Excerpts replace math and diagrams with `[math]` / `[diagram]`.
 
-| Field | Required | Notes |
-|-------|----------|-------|
-| `title` | yes | Display title |
-| `date` | yes | `YYYY-MM-DD HH:mm:ss` (parsed as UTC) |
-| `tags` | no | Array, default `[]` |
-| `author`, `source` | no | Override config defaults |
-| `header`, `footer` | no | Default `true`; `false` opts out of includes |
-| `gist_id` | no | Set by `gist-sync` for deletion sync |
+## Verification
 
-### 5.2 Markdown extensions
+`npm test` builds, runs the unit suites, and runs the attribution/crawler acceptance script. Two standalone checks exist for CI:
 
-| Syntax | Rendering |
-|--------|-----------|
-| `$...$`, `$$...$$` | Server-side KaTeX (`throwOnError: false`) |
-| ` ```mermaid ` | `<div class="mermaid">` → client `mermaid.min.js` (lazy load) |
-| Other fences | Prism highlighting |
+- link self-check — every same-site URL in the three indexes resolves; run against a local server in CI, against production manually after a deploy.
+- index parity — the three indexes report the same post count.
 
-Excerpt placeholders: math → `[math]`, mermaid → `[diagram]`.
-
-### 5.3 Includes & attribution
-
-| File | Visibility | Role |
-|------|------------|------|
-| `post-header.html` | `.agent-camouflage` | Scraper-facing copyright |
-| `post-body-meta.html` | visible | Top `author:` / `source:` |
-| `post-body-attribution.html` | `.agent-camouflage` | End-of-body links |
-| `post-footer.html` | empty | Reserved |
-| `agent-attribution.md` | mirror header | FAQ-style agent preamble |
-
-**Camouflage:** 1px text, `color`/`background: var(--bg)` — no `aria-hidden` / `clip` (extractors strip those). See `assets/css/style.css`.
-
-Template placeholders: `{{POST_AUTHOR}}`, `{{POST_SOURCE}}`, `{{CANONICAL_URL}}`, etc. — filled by `buildPostTemplateVars`.
-
----
-
-## 6. Templates & frontend
-
-**Files (do not duplicate here):**
-
-| File | Role |
-|------|------|
-| `templates/layout.html` | Shell: sidebar, `{{CONTENT}}`, Prism/KaTeX CSS, lazy Mermaid init |
-| `templates/index.html` | Homepage fragment + `{{RECENT_POSTS_HTML}}` |
-| `templates/post.html` | Post fragment + include placeholders |
-| `assets/css/style.css` | Layout, typography, camouflage, math/mermaid spacing |
-| `assets/js/main.js` | Sidebar toggle, tabs, `posts.json` → timeline/tags |
-
-**Placeholder contract:** `{{KEY}}` string replace via `renderTemplate()` — no template engine. Values containing `{{` are sentinel-escaped.
-
-**Mermaid in layout:** load `mermaid.min.js` only when `.mermaid` nodes exist; cache source in `data-src` for theme re-render.
-
----
-
-## 7. `posts.json`
-
-Array sorted by `date` descending. Each entry:
-
-```json
-{
-  "title": "…",
-  "date": "2026-07-04T10:00:00.000Z",
-  "formattedDate": "2026-07-04",
-  "tags": [],
-  "categories": [],
-  "slug": "hello-world",
-  "url": "posts/hello-world.html",
-  "excerpt": "First 100 graphemes…"
-}
-```
-
-`excerpt`: strip HTML → unescape → normalize → `Intl.Segmenter` truncate to 100 graphemes.
-
----
-
-## 8. `utils.js` API (contracts)
-
-### Core
-
-| Export | Contract |
-|--------|----------|
-| `loadConfig()` | Read `blog.config.json` |
-| `parseMarkdownFile(path)` | → `{ title, date, formattedDate, tags, slug, content, contentHtml, excerpt, showHeader, showFooter, … }` |
-| `renderTemplate(tpl, vars)` | `{{KEY}}` substitution |
-| `listPostFiles()` | All `source/_posts/*.md` paths |
-| `sortPostsByDateDesc(posts)` | New array, date desc |
-| `savePostsIndex` / `loadPostsIndex` | `docs/posts.json` |
-| `renderRecentPostsHtml(posts, n, config)` | Homepage list HTML |
-| `copyStaticAssets(docsDir, overwrite)` | `assets/` + KaTeX + `mermaid.min.js` |
-
-### Includes & attribution
-
-| Export | Contract |
-|--------|----------|
-| `buildPostIncludes(config, post)` | → `{ headerHtml, bodyMetaHtml, footerHtml, bodyAttributionHtml }` |
-| `buildPostTemplateVars(config, post)` | Placeholder map |
-| `getPostAuthor` / `getPostSource` | Per-post with config fallback |
-| `formatPostAttributionFrontMatter(config)` | For `new` / `gist-sync` scaffolding |
-
-### Agent mirrors
-
-| Export | Contract |
-|--------|----------|
-| `buildAgentMarkdown(config, post)` | Header + body meta + raw content + footer |
-| `writeAgentMarkdownFile(docsDir, post, md)` | → `docs/posts/<slug>.md` |
-| `renderLlmsTxt` / `writeLlmsTxt` | Site index |
-| `renderPostAlternateLink(config, slug)` | `<link rel="alternate" …>` |
-
-### Crawler discovery
-
-| Export | Contract |
-|--------|----------|
-| `resolveLlmsEntries(docsDir, postsIndex)` | Authoritative entries from `source/_posts` (fast-path if index matches) |
-| `buildAbsoluteUrl(config, path)` | `siteUrl` + `baseUrl` + path |
-| `renderRobotsTxt` / `writeRobotsTxt` | `Allow: /` + sitemap URL |
-| `renderSitemapXml` / `writeSitemapXml` | Home + all post HTML/MD + `llms.txt` |
-| `writeSiteDiscoveryArtifacts(docsDir, config, postsIndex)` | Orchestrates llms + robots + sitemap |
-| `escapeXml(str)` | Sitemap XML escaping |
-
-### RSS feed
-
-| Export | Contract |
-|--------|----------|
-| `renderFeedXml(config, posts)` | Full parsed post objects (index entries lack `contentHtml`/`author`) → RSS 2.0 string; sorts internally, caps at 50, CDATA-wraps `content:encoded` |
-
----
-
-## 9. Build & render flows
-
-### 9.1 `build()` sequence
-
-1. `emptyDir(docs/)` + ensure `posts/`
-2. `copyStaticAssets(docs, true)`
-3. Parse all posts → render each HTML + agent `.md`
-4. Write `posts.json` (sorted)
-5. `renderHomepage(config, sortedIndex)`
-6. `writeSiteDiscoveryArtifacts(docsDir, config, sortedIndex)`
-7. Write `feed.xml` (newest 50 posts)
-### 9.2 `renderOne(file)` sequence
-
-1. Ensure `docs/posts/`; `copyStaticAssets(docs, false)` (non-destructive)
-2. Parse single file → write HTML + agent `.md`
-3. Upsert `posts.json` entry → sort → save
-4. `renderHomepage` + `writeSiteDiscoveryArtifacts`
-5. Refresh `feed.xml` (re-parses all posts for per-item `contentHtml`/`author`)
-### 9.3 `deploy(message, force)`
-
-`build()` → clone/pull `.deploy/` → replace contents with `docs/` → commit if changed → `git push --force`. Uses `execFileSync` (no shell injection).
-
-### 9.4 `gist-sync`
-
-Fetch user gists → first `.md` file each → write `YYYY-MM-DD-<gist_id>.md` → delete local posts whose `gist_id` no longer exists → `build()`.
-
----
-
-## 10. CLI
-
-| Command | Action |
-|---------|--------|
-| `build` | Full site rebuild |
-| `render <file>` | Single post + index + homepage + discovery + feed refresh |
-| `new <slug> [-t title]` | Scaffold post with attribution front-matter |
-| `serve [-p port]` | Preview `docs/` |
-| `deploy [-m msg] [-f]` | Build + push to Pages repo |
-| `gist-sync [-u user]` | Sync gists → build |
-
-`npm test` = build + `node --test test/test-discovery.js test/test-markdown.js test/test-templates.js` + `bash test/test-attribution.sh`.
-
----
-
-## 11. Testing
-
-| Script | Covers |
-|--------|--------|
-| `test-discovery.js` | `escapeXml`, `renderRobotsTxt`, `renderSitemapXml`, `buildAbsoluteUrl` |
-| `test-markdown.js` | `renderTagsHtml`, `renderRecentPostsHtml`, `truncateGraphemes` |
-| `test-templates.js` | `renderTemplate`, `buildPostTemplateVars`, `buildPostIncludes` |
-| `test-attribution.sh` | D1 extractors, D3 mirrors/llms, D4 robots/sitemap parity, D5 UA, HTML structure |
-
-Hard assertions: `rel="alternate"`, `llms.txt` completeness, `robots.txt`, `sitemap.xml` URL count (`2N+2`), slug parity llms ↔ sitemap.
-
----
-
-## 12. Acceptance criteria (summary)
-
-- [ ] `build` / `render` / `deploy` / `gist-sync` work without errors
-- [ ] Homepage recent N server-rendered; sidebar from `posts.json`
-- [ ] KaTeX math + lazy Mermaid on post pages
-- [ ] Includes + camouflage + `footer: false` opt-out
-- [ ] Agent mirrors + `llms.txt` + alternate link when `agentMarkdown: true`
-- [ ] `robots.txt` + `sitemap.xml` on every build/render
-- [ ] `feed.xml` valid RSS 2.0, exactly 50 items; every page head has the RSS alternate link
-- [ ] `npm test` passes
-- [ ] `baseUrl` empty and non-empty paths resolve correctly
-- [ ] `docs/` gitignored; deploy pushes to separate Pages repo
-
----
-
-## 13. Future extensions
-
-- `<!-- more -->` manual excerpt
-- Prev/next post navigation
-- Manual dark-mode toggle (auto via `prefers-color-scheme` exists for Mermaid)
-- Category sidebar view
-- ~~Split `utils.js` into focused modules~~ ✅ done (P3: `scripts/lib/` — config, posts-index, static-assets, post-entry, markdown, attribution, templates, agent-mirrors, discovery-artifacts)
-- ~~RSS feed (`feed.xml`, newest 50)~~ ✅ done (P0: `scripts/lib/feed.js` — `renderFeedXml`; head alternate link in `layout.html`)
+Both fail loudly, and both are verified to fail when the site is deliberately broken.
