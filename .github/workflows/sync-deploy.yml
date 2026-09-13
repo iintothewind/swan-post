@@ -67,9 +67,15 @@ jobs:
 
       # Writes source/_posts/*.md for new and updated gists, deletes posts whose
       # gist is gone, and rebuilds docs/ (it calls build() internally).
+      #
+      # Deliberately NOT passing secrets.GITHUB_TOKEN: that is a GitHub Actions
+      # integration token and the gists API rejects it with 403 "Resource not
+      # accessible by integration". Listing public gists needs no auth at all.
+      # GH_PAT is optional and unset by default — add a classic PAT (no scopes
+      # needed for public gists) only if you outgrow the anonymous 60/hour limit.
       - name: Sync gists
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         run: node scripts/cli.js gist-sync
 
       # Builds again, then force-pushes docs/ to the Pages repo.
