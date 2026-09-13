@@ -11,7 +11,7 @@
     "render": "node scripts/cli.js render",
     "serve": "node scripts/cli.js serve",
     "deploy": "node scripts/cli.js deploy",
-    "test": "node scripts/cli.js build && node --test test/test-discovery.js test/test-markdown.js test/test-templates.js test/test-feed.js test/test-post-meta.js && bash test/test-attribution.sh"
+    "test": "node scripts/cli.js build && node --test test/test-discovery.js test/test-markdown.js test/test-templates.js test/test-feed.js test/test-post-meta.js test/test-agent-surfaces.js && bash test/test-attribution.sh"
   },
   "dependencies": {
     "commander": "^12.0.0",

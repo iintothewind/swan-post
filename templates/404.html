@@ -1,0 +1,65 @@
+<article class="post not-found">
+<h1>404 — page not found</h1>
+<p>The requested page does not exist on this site.</p>
+
+<!--
+agent-route: this path did not resolve.
+GET /posts.json → array of { title, url, slug, date } — match on title or slug.
+GET /llms.txt   → complete post index with Markdown mirror URLs.
+GET /llms-full.txt → the whole corpus in one file.
+Do not retry this path; choose a real URL from one of the above instead.
+-->
+<div class="not-found-agent-hint">
+<p>For automated readers: this URL does not exist. Fetch <a href="{{BASE_URL}}/posts.json">{{BASE_URL}}/posts.json</a> and search by title, or read <a href="{{BASE_URL}}/llms.txt">{{BASE_URL}}/llms.txt</a> for the full index.</p>
+</div>
+
+<h2>Posts</h2>
+<ul class="not-found-list">
+{{NOT_FOUND_POSTS_HTML}}
+</ul>
+
+<p class="not-found-links">
+<a href="{{BASE_URL}}/index.html">Home</a> ·
+<a href="{{BASE_URL}}/llms.txt">llms.txt</a> ·
+<a href="{{BASE_URL}}/feed.xml">RSS</a> ·
+<a href="{{BASE_URL}}/feed.json">JSON Feed</a>
+</p>
+
+<div id="not-found-suggestions"></div>
+
+<script>
+// Progressive enhancement only: the static list above is what agents and
+// no-JS readers get. This just narrows it down using the requested path.
+document.addEventListener("DOMContentLoaded", function () {
+  var base = window.BASE_URL || "";
+  var box = document.getElementById("not-found-suggestions");
+  if (!box) return;
+  var tail = decodeURIComponent(location.pathname || "").split("/").pop().replace(/\.html?$/i, "").toLowerCase();
+  if (!tail) return;
+  fetch(base + "/posts.json")
+    .then(function (r) { return r.json(); })
+    .then(function (posts) {
+      var hits = (posts || []).filter(function (p) {
+        return String(p.title || "").toLowerCase().indexOf(tail) >= 0
+          || String(p.slug || "").toLowerCase().indexOf(tail) >= 0;
+      });
+      if (!hits.length) return;
+      var h2 = document.createElement("h2");
+      h2.textContent = "Possibly related";
+      var ul = document.createElement("ul");
+      hits.slice(0, 10).forEach(function (p) {
+        var li = document.createElement("li");
+        var a = document.createElement("a");
+        a.href = base + "/" + p.url;
+        // textContent, not innerHTML: titles are author-supplied text.
+        a.textContent = p.title || p.slug;
+        li.appendChild(a);
+        ul.appendChild(li);
+      });
+      box.appendChild(h2);
+      box.appendChild(ul);
+    })
+    .catch(function () { /* offline or missing index: the static list stands */ });
+});
+</script>
+</article>

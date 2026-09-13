@@ -77,16 +77,28 @@ BASE_URL: config.baseUrl || "",
 SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
 POST_ALTERNATE_MD: opts.postAlternateMd || "",
 POST_META_HTML: opts.postMetaHtml || "",
+PAGE_HEAD_HTML: opts.headHtml || "",
 CONTENT: opts.content || ""
 });
 }
 
 function buildPostTemplateVars(config, post) {
 const license = (post && post.license) ? String(post.license) : "";
+const siteLicense = config.license ? String(config.license) : "";
+const siteLicenseUrl = config.licenseUrl ? String(config.licenseUrl) : "";
 return {
 SITE_TITLE: config.title || "",
 SITE_AUTHOR: config.author || "",
 SITE_DESCRIPTION: config.description || "",
+SITE_LICENSE: siteLicense,
+SITE_LICENSE_URL: siteLicenseUrl,
+// Built here for the same reason as POST_LICENSE_LINE: with no conditionals in
+// the template engine, an unlicensed site must emit nothing at all.
+SITE_LICENSE_LINE: siteLicense
+? '\n<p class="post-license">© ' + escapeHtml(config.author || "") +
+  ' · Licensed under <a rel="license" href="' + escapeHtml(siteLicenseUrl) + '">' +
+  escapeHtml(siteLicense) + "</a></p>"
+: "",
 BASE_URL: config.baseUrl || "",
 SITE_URL: getSiteUrl(config),
 POST_AUTHOR: getPostAuthor(config, post),

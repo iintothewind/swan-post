@@ -162,9 +162,28 @@ return `<article class="recent-post-item">
 }).join("\n");
 }
 
+// Plain <li> links for the 404 page. Unlike renderRecentPostsHtml this emits no
+// excerpts, and hrefs are absolute ("/posts/...") because a 404 is served at an
+// arbitrary path depth where relative links would resolve against the wrong base.
+function renderPostLinkList(posts, count, config) {
+const md = getMd();
+const list = posts.slice(0, count);
+if (list.length === 0) {
+return '<li>No posts published yet.</li>';
+}
+const base = (config && config.baseUrl) || "";
+return list.map((post) => {
+const href = base + "/" + post.url;
+return '<li><a href="' + md.utils.escapeHtml(href) + '">' +
+md.utils.escapeHtml(post.title) + '</a> <span class="post-date">' +
+md.utils.escapeHtml(post.formattedDate || "") + "</span></li>";
+}).join("\n");
+}
+
 module.exports = {
 getMd,
 parseMarkdownFile,
+renderPostLinkList,
 renderTagsHtml,
 renderRecentPostsHtml,
 truncateGraphemes,

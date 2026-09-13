@@ -3,6 +3,7 @@ const path = require("path");
 const { DOMParser } = require("@xmldom/xmldom");
 const { validateXML } = require("xmllint-wasm");
 const { getSiteUrl, getBasePath, buildAbsoluteUrl } = require("./config");
+const { JSON_FEED_VERSION } = require("./feed");
 
 // Spec: the feed carries at most the 50 newest posts.
 const FEED_ITEM_LIMIT = 50;
@@ -11,6 +12,9 @@ const FEED_ITEM_LIMIT = 50;
 // get wrong when converting from the ISO 8601 dates kept in post frontmatter,
 // so it gets its own dedicated rule rather than a generic "date parses" check.
 const RFC822 = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} (GMT|[+-]\d{4})$/;
+
+// RFC 3339, as required by JSON Feed 1.1's date_published (an ISO 8601 profile).
+const RFC3339 = /^\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
 
 // Offline stand-in for the W3C feed validator, which is a Python 2 CGI app with
 // no installable distribution (no PyPI package) and an unreliable hosted
@@ -219,10 +223,110 @@ async function validateFeedXml(xml, options) {
   };
 }
 
+// JSON Feed 1.1 counterpart to checkRules. JSON.parse covers well-formedness, so
+// this is purely spec rules + the same local reachability check.
+function checkJsonFeedRules(text, options) {
+  const config = (options && options.config) || {};
+  const docsDir = (options && options.docsDir) || path.join(process.cwd(), "docs");
+  const errors = [];
+  const warnings = [];
+  const facts = { itemCount: 0, items: [] };
+
+  let feed;
+  try {
+    feed = JSON.parse(text);
+  } catch (err) {
+    return { errors: ["invalid JSON: " + err.message], warnings, facts };
+  }
+
+  if (feed.version !== JSON_FEED_VERSION) {
+    errors.push('version must be "' + JSON_FEED_VERSION + '", got "' + feed.version + '"');
+  }
+  ["title", "home_page_url", "feed_url"].forEach((key) => {
+    if (!feed[key]) errors.push(key + " is required");
+  });
+  if (feed.feed_url !== buildAbsoluteUrl(config, "/feed.json")) {
+    errors.push("feed_url must be " + buildAbsoluteUrl(config, "/feed.json") + ", got " + feed.feed_url);
+  }
+  if (!Array.isArray(feed.items)) {
+    return { errors: errors.concat("items must be an array"), warnings, facts };
+  }
+
+  facts.itemCount = feed.items.length;
+  feed.items.forEach((item, i) => {
+    const where = "items[" + i + "]";
+    if (!item.id) errors.push(where + ".id is required");
+    if (!item.url) errors.push(where + ".url is required");
+    if (item.id && item.url && item.id !== item.url) {
+      errors.push(where + ".id must equal .url: " + item.id + " != " + item.url);
+    }
+    if (!item.title) errors.push(where + ".title is required");
+    if (!item.content_html) errors.push(where + ".content_html is required");
+    if (!item.date_published) {
+      errors.push(where + ".date_published is required");
+    } else if (!RFC3339.test(item.date_published) || Number.isNaN(Date.parse(item.date_published))) {
+      errors.push(where + ".date_published is not RFC 3339: " + item.date_published);
+    }
+    const localPath = item.url ? localPathForUrl(item.url, config, docsDir) : null;
+    if (item.url && !localPath) {
+      errors.push(where + ".url is not on this site: " + item.url);
+    } else if (localPath && !fs.existsSync(localPath)) {
+      errors.push(where + ".url has no generated file: " + item.url);
+    }
+    facts.items.push({ id: item.id, url: item.url, date_published: item.date_published });
+  });
+
+  if (facts.itemCount > FEED_ITEM_LIMIT) {
+    errors.push("feed has " + facts.itemCount + " items, over the " + FEED_ITEM_LIMIT + " cap");
+  }
+  for (let i = 1; i < facts.items.length; i++) {
+    const prev = Date.parse(facts.items[i - 1].date_published);
+    const curr = Date.parse(facts.items[i].date_published);
+    if (!Number.isNaN(prev) && !Number.isNaN(curr) && prev < curr) {
+      errors.push("items are not sorted newest first at index " + i);
+      break;
+    }
+  }
+  return { errors, warnings, facts };
+}
+
+// Both feeds are serialized from buildFeedItems, so their ids must match exactly,
+// in order. This catches the two serializers drifting apart — the whole reason
+// buildFeedItems exists.
+function checkFeedParity(xml, jsonText, options) {
+  const xmlFacts = checkRules(xml, options).facts;
+  const jsonFacts = checkJsonFeedRules(jsonText, options).facts;
+  const errors = [];
+  if (xmlFacts.itemCount !== jsonFacts.itemCount) {
+    errors.push(
+      "feeds disagree on item count: feed.xml " + xmlFacts.itemCount + " vs feed.json " + jsonFacts.itemCount
+    );
+  }
+  const shared = Math.min(xmlFacts.items.length, jsonFacts.items.length);
+  for (let i = 0; i < shared; i++) {
+    const xmlLink = xmlFacts.items[i].link;
+    const jsonId = jsonFacts.items[i].id;
+    if (xmlLink !== jsonId) {
+      errors.push("feeds disagree at index " + i + ": feed.xml " + xmlLink + " vs feed.json " + jsonId);
+      break;
+    }
+  }
+  return { errors, xmlFacts, jsonFacts };
+}
+
+async function validateFeedJson(text, options) {
+  const { errors, warnings, facts } = checkJsonFeedRules(text, options);
+  return { ok: errors.length === 0, errors, warnings, facts };
+}
+
 module.exports = {
   validateFeedXml,
+  validateFeedJson,
   checkWellFormed,
   checkRules,
+  checkJsonFeedRules,
+  checkFeedParity,
   RFC822,
+  RFC3339,
   FEED_ITEM_LIMIT,
 };

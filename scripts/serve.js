@@ -35,8 +35,18 @@ return;
 }
 fs.readFile(filePath, (err, data) => {
 if (err) {
+// Mirror GitHub Pages: serve docs/404.html (with a 404 status) so the fallback
+// page and its agent routing hints can actually be exercised locally.
+const notFoundPath = path.join(root, "404.html");
+fs.readFile(notFoundPath, (nfErr, nfData) => {
+if (nfErr) {
 res.writeHead(404);
 res.end("Not Found: " + urlPath);
+return;
+}
+res.writeHead(404, { "Content-Type": MIME[".html"] });
+res.end(nfData);
+});
 return;
 }
 const ext = path.extname(filePath);

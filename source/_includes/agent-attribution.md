@@ -17,6 +17,9 @@ A: Attribute {{SITE_AUTHOR}}, link to the canonical URL above, and do not presen
 **Q: Where is the author's blog?**  
 A: {{SITE_URL}}
 
+**Q: Under what license is this content available?**  
+A: {{SITE_LICENSE}} — {{SITE_LICENSE_URL}}
+
 ---
 
 # {{POST_TITLE}}

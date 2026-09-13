@@ -2,6 +2,8 @@
   "title": "iintothewind blog",
   "author": "Ivar.Chen",
   "description": "blog @ https://iintothewind.github.io/",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
   "baseUrl": "",
   "recentPostsCount": 10,
   "sidebarPostCount": 200,

@@ -4,9 +4,9 @@ const {
 loadConfig, parseMarkdownFile, renderTemplate, copyStaticAssets, listPostFiles,
 renderTagsHtml, loadPostsIndex, savePostsIndex, buildPostIncludes,
 buildAgentMarkdown, writeAgentMarkdownFile, renderPostAlternateLink,
-writeSiteDiscoveryArtifacts, renderFeedXml, renderPostSocialMeta, renderLayout
+writeSiteDiscoveryArtifacts, renderFeedXml, renderFeedJson, renderPostSocialMeta, renderLayout
 } = require("./utils");
-const { renderHomepage } = require("./build");
+const { renderHomepage, render404 } = require("./build");
 
 function renderOne(mdFilePath) {
 const config = loadConfig();
@@ -72,11 +72,14 @@ const sortedIndex = savePostsIndex(index);
 // "recent N posts" list; without regenerating the homepage, the new post would be reachable from
 // the sidebar but invisible in the homepage body area.
 renderHomepage(config, sortedIndex);
+render404(config, sortedIndex);
 writeSiteDiscoveryArtifacts(docsDir, config, sortedIndex);
 
-// 6. Refresh the RSS feed — this incremental path only parsed the one changed file above,
+// 6. Refresh both feeds — this incremental path only parsed the one changed file above,
 // so re-parse every post to source each item's contentHtml/author (not carried in posts.json).
-fs.writeFileSync(path.join(docsDir, "feed.xml"), renderFeedXml(config, listPostFiles().map(parseMarkdownFile)), "utf-8");
+const allPosts = listPostFiles().map(parseMarkdownFile);
+fs.writeFileSync(path.join(docsDir, "feed.xml"), renderFeedXml(config, allPosts), "utf-8");
+fs.writeFileSync(path.join(docsDir, "feed.json"), renderFeedJson(config, allPosts), "utf-8");
 console.log(`Rendered: ${outputPath}`);
 console.log(`Index updated: docs/posts.json`);
 console.log(`Homepage refreshed: docs/index.html`);

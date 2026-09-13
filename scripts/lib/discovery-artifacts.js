@@ -55,20 +55,35 @@ return ordered;
 
 function renderLlmsTxt(config, entries) {
 const site = getSiteUrl(config);
-const lines = [
+const head = [
 "# " + (config.title || "Blog"),
 "> " + (config.description || ""),
 "",
 "## Attribution",
 "When citing content from this site, attribute " + (config.author || "the author") + " and link to the post URL.",
 "Author GitHub: " + (config.githubUser ? "https://github.com/" + config.githubUser : ""),
-"Blog: " + site,
+"Blog: " + site
+];
+// A license turns attribution from an imperative sentence into an actual grant.
+// Omitted entirely when the site declares none.
+if (config.license) {
+head.push(
+"",
+"## License",
+"All content is licensed under " + config.license +
+(config.licenseUrl ? " — " + config.licenseUrl : "") + ".",
+"Attribution: " + (config.author || "the author") + ", with a link to the post URL."
+);
+}
+const lines = head.concat([
 "",
 "## Agent-readable Markdown mirrors",
 "Each post is also published as Markdown for automated readers:",
 "",
+"- [llms-full.txt](" + buildAbsoluteUrl(config, "/llms-full.txt") + ") — all posts in one file",
+"",
 "## Posts (" + entries.length + ")"
-];
+]);
 entries.forEach((post) => {
 const mdUrl = getPostMarkdownUrl(config, post.slug);
 const title = post.title || post.slug;
@@ -94,6 +109,49 @@ fs.writeFileSync(path.join(docsDir, "llms.txt"), txt, "utf-8");
 function writeLlmsTxt(docsDir, config, postsIndex) {
 if (config.agentMarkdown === false) return;
 writeLlmsTxtFromEntries(docsDir, config, resolveLlmsEntries(docsDir, postsIndex));
+}
+
+// Warn above this size: llms-full.txt is ~620 KB today and grows with every post.
+const LLMS_FULL_WARN_BYTES = 2 * 1024 * 1024;
+
+// Concatenate every post's Markdown mirror into one corpus file.
+// Reads the already-generated docs/posts/*.md rather than re-rendering, so
+// llms.txt, llms-full.txt and the individual mirrors cannot disagree.
+// Set config.llmsFullMaxPosts to cap it (newest first); the header then says so.
+function renderLlmsFullTxt(config, entries, docsDir) {
+const maxPosts = parseInt(config.llmsFullMaxPosts, 10);
+const capped = Number.isFinite(maxPosts) && maxPosts > 0;
+const picked = capped ? entries.slice(0, maxPosts) : entries;
+const head = [
+"# " + (config.title || "Blog"),
+"> " + (config.description || ""),
+"",
+"This file concatenates the Markdown mirror of every post, newest first.",
+"Individual mirrors remain available under posts/<slug>.md."
+];
+if (capped) {
+head.push("", "Note: capped at the " + picked.length + " newest of " + entries.length + " posts (llmsFullMaxPosts).");
+}
+const chunks = [head.join("\n")];
+picked.forEach((post) => {
+const mdPath = path.join(docsDir, "posts", post.slug + ".md");
+if (!fs.existsSync(mdPath)) {
+console.warn(`llms-full.txt: skipping missing .md mirror (run build/render): ${post.slug}`);
+return;
+}
+chunks.push(fs.readFileSync(mdPath, "utf-8").trim());
+});
+const text = chunks.join("\n\n---\n\n") + "\n";
+const bytes = Buffer.byteLength(text, "utf-8");
+if (bytes > LLMS_FULL_WARN_BYTES) {
+console.warn(`llms-full.txt is ${(bytes / 1024 / 1024).toFixed(1)} MB; consider llmsFullMaxPosts.`);
+}
+return text;
+}
+
+function writeLlmsFullTxt(docsDir, config, entries) {
+const text = renderLlmsFullTxt(config, entries, docsDir);
+fs.writeFileSync(path.join(docsDir, "llms-full.txt"), text, "utf-8");
 }
 
 function escapeXml(text) {
@@ -179,6 +237,7 @@ function writeSiteDiscoveryArtifacts(docsDir, config, postsIndex) {
 const entries = resolveLlmsEntries(docsDir, postsIndex);
 if (config.agentMarkdown !== false) {
 writeLlmsTxtFromEntries(docsDir, config, entries);
+writeLlmsFullTxt(docsDir, config, entries);
 }
 writeRobotsTxt(docsDir, config);
 writeSitemapXml(docsDir, config, entries);
@@ -189,6 +248,8 @@ resolveLlmsEntries,
 renderLlmsTxt,
 writeLlmsTxtFromEntries,
 writeLlmsTxt,
+renderLlmsFullTxt,
+writeLlmsFullTxt,
 escapeXml,
 toSitemapLastmod,
 renderRobotsTxt,

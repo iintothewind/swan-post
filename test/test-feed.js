@@ -7,13 +7,17 @@ const path = require("path");
 const { loadConfig } = require("../scripts/utils");
 const {
   validateFeedXml,
+  validateFeedJson,
   checkWellFormed,
   checkRules,
+  checkFeedParity,
   FEED_ITEM_LIMIT,
 } = require("../scripts/lib/feed-validate");
+const { JSON_FEED_VERSION } = require("../scripts/lib/feed");
 
 const docsDir = path.join(__dirname, "..", "docs");
 const feedPath = path.join(docsDir, "feed.xml");
+const feedJsonPath = path.join(docsDir, "feed.json");
 const config = loadConfig();
 
 // Minimal but complete RSS 2.0 document used to prove the rules actually fire.
@@ -132,5 +136,57 @@ describe("validateFeedXml", () => {
     const result = await validateFeedXml(fs.readFileSync(feedPath, "utf-8"), { config, docsDir });
     assert.equal(result.ok, true, "feed.xml failed:\n" + result.errors.join("\n"));
     assert.ok(result.facts.itemCount > 0);
+  });
+});
+
+describe("feed.json", () => {
+  it("passes JSON Feed 1.1 rules", async () => {
+    assert.ok(fs.existsSync(feedJsonPath), "docs/feed.json not found — run `npm run build` first");
+    const result = await validateFeedJson(fs.readFileSync(feedJsonPath, "utf-8"), { config, docsDir });
+    assert.equal(result.ok, true, "feed.json failed:\n" + result.errors.join("\n"));
+    assert.ok(result.facts.itemCount > 0);
+  });
+
+  it("declares the JSON Feed version", () => {
+    const feed = JSON.parse(fs.readFileSync(feedJsonPath, "utf-8"));
+    assert.equal(feed.version, JSON_FEED_VERSION);
+    assert.equal(feed.feed_url, "https://iintothewind.github.io/feed.json");
+  });
+
+  it("uses RFC 3339 dates and permalink ids", () => {
+    const feed = JSON.parse(fs.readFileSync(feedJsonPath, "utf-8"));
+    feed.items.forEach((item) => {
+      assert.equal(item.id, item.url, "id must be the permalink");
+      assert.match(item.date_published, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      assert.ok(!Number.isNaN(Date.parse(item.date_published)));
+    });
+    assert.ok(feed.items.length <= FEED_ITEM_LIMIT);
+  });
+
+  it("carries the same items as feed.xml, in the same order", () => {
+    // Both feeds are serialized from buildFeedItems; this is the guard against
+    // the two serializers drifting apart.
+    const errors = checkFeedParity(
+      fs.readFileSync(feedPath, "utf-8"),
+      fs.readFileSync(feedJsonPath, "utf-8"),
+      { config, docsDir }
+    ).errors;
+    assert.deepEqual(errors, [], "feed.xml and feed.json disagree:\n" + errors.join("\n"));
+  });
+
+  it("rejects malformed JSON", async () => {
+    const result = await validateFeedJson('{"version":', { config, docsDir });
+    assert.equal(result.ok, false);
+    assert.match(result.errors[0], /invalid JSON/);
+  });
+
+  it("rejects a wrong version and a mismatched feed_url", async () => {
+    const feed = JSON.parse(fs.readFileSync(feedJsonPath, "utf-8"));
+    feed.version = "https://jsonfeed.org/version/1";
+    feed.feed_url = "https://example.test/feed.json";
+    const result = await validateFeedJson(JSON.stringify(feed), { config, docsDir });
+    assert.equal(result.ok, false);
+    assert.ok(result.errors.some((e) => /version must be/.test(e)));
+    assert.ok(result.errors.some((e) => /feed_url must be/.test(e)));
   });
 });
