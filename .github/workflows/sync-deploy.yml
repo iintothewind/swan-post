@@ -1,0 +1,81 @@
+name: Sync & deploy
+
+# Manual content pipeline: pull gists in as posts, publish the site, and commit
+# the generated posts back to this repo.
+#
+# Triggered by hand only — no schedule, no push — because it writes to two repos.
+# Requires a repository secret:
+#   DEPLOY_KEY — private SSH key with write access to the Pages repo named by
+#                deployTarget in blog.config.json. Add its public half as a
+#                deploy key (Allow write access) on that repo.
+#
+# Access control: the job is gated on the triggering actor below. Note that any
+# collaborator with write access can press "Run workflow", so the actor check is
+# what actually restricts it — not the button's visibility.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-deploy
+  cancel-in-progress: false
+
+jobs:
+  sync-deploy:
+    name: Gist sync, deploy, commit posts
+    runs-on: ubuntu-latest
+    # Only the owner of both this repo and the Pages repo may run this.
+    if: github.triggering_actor == 'iintothewind'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Configure git identity
+        run: |
+          git config --global user.name "swan-post bot"
+          git config --global user.email "actions@users.noreply.github.com"
+
+      - name: Configure SSH deploy key
+        run: |
+          if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
+            echo "DEPLOY_KEY secret is not set; cannot push to the Pages repo." >&2
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+
+      # Writes source/_posts/*.md for new and updated gists, deletes posts whose
+      # gist is gone, and rebuilds docs/ (it calls build() internally).
+      - name: Sync gists
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/cli.js gist-sync
+
+      # Builds again, then force-pushes docs/ to the Pages repo.
+      - name: Deploy to Pages
+        run: |
+          node scripts/cli.js deploy -m "deploy: ${{ github.run_id }}"
+
+      - name: Commit and push synced posts
+        run: |
+          git add -A source/_posts
+          if git diff --cached --quiet; then
+            echo "No post changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: gist-sync $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push origin "HEAD:$GITHUB_REF_NAME"

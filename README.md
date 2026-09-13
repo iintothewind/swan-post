@@ -48,6 +48,8 @@ Dual-repo model: the source repo holds the generator and Markdown; the Pages rep
 
 `deploy` pushes only when the rebuilt output differs. Use `--force` when the output matches but the remote needs updating (for example after only editing front-matter that does not change HTML).
 
+The **Sync & deploy** workflow (Actions tab, manual only) runs `gist-sync` → `deploy` → commits the synced posts back to this repo. It needs a `DEPLOY_KEY` repository secret: an SSH key whose public half is registered as a write-enabled deploy key on the Pages repo.
+
 ## Article format
 
 `source/_posts/<slug>.md` — slug is `[a-z0-9-]+`, given on the command line.
