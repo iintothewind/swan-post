@@ -28,6 +28,49 @@ _md = md;
 return md;
 }
 
+// ```mermaid blocks should carry an accessible title and description. Mermaid
+// honours them only as statements inside the diagram body (`accTitle:` /
+// `accDescr:`) — the front-matter form produces nothing — and turns them into the
+// SVG's <title>/<desc> plus aria-labelledby/aria-describedby. They are also the
+// only natural-language description of the diagram that reaches the .md mirror,
+// which is the surface an agent actually reads.
+// Blocks come from the same token stream the renderer uses, so this cannot
+// disagree with what actually becomes a diagram: a mermaid example inside a longer
+// fence is a code block, and is not reported.
+// Returns [{ line, missing }] for blocks lacking either annotation; `line` is a
+// body-relative 1-based line unless lineOffset shifts it to a file line.
+// A missing pair is a warning, never an error: the post still renders, it just
+// loses its alt text.
+function findUnannotatedMermaidBlocks(markdown, lineOffset) {
+const offset = lineOffset || 0;
+const found = [];
+getMd().parse(String(markdown || ""), {}).forEach((token) => {
+if (token.type !== "fence" || token.info.trim() !== "mermaid") return;
+// Mermaid reads the annotations as statements in the diagram body only; a leading
+// `---` block is front-matter, which mermaid ignores, so drop it before testing.
+const body = token.content.replace(/^[ \t]*---[ \t]*\r?\n[\s\S]*?^[ \t]*---[ \t]*\r?\n?/m, "");
+const missing = [];
+if (!/^[ \t]*accTitle[ \t]*:/m.test(body)) missing.push("accTitle");
+if (!/^[ \t]*accDescr[ \t]*:/m.test(body)) missing.push("accDescr");
+if (missing.length > 0) {
+// token.map[0] is the 0-based start line of the fence within the parsed body
+found.push({ line: (token.map ? token.map[0] : 0) + 1 + offset, missing });
+}
+});
+return found;
+}
+
+// Report the blocks above on stderr. `markdown` is the parsed body, so the caller
+// passes the number of front-matter lines it dropped as lineOffset — the author
+// gets a line they can open the file at.
+function warnUnannotatedMermaidBlocks(filePath, markdown, lineOffset) {
+// Forward slashes so the message reads the same on Windows and on CI
+const rel = (path.relative(process.cwd(), filePath) || filePath).split(path.sep).join("/");
+findUnannotatedMermaidBlocks(markdown, lineOffset).forEach(({ line, missing }) => {
+console.warn("mermaid warning: " + rel + ":" + line + " diagram has no " + missing.join(" / "));
+});
+}
+
 // Wrap tables in a horizontal scroll container so wide markdown tables don't overflow on mobile.
 function wrapTablesInScrollContainer(html) {
 return html.replace(/<table\b/gi, '<div class="table-scroll"><table').replace(/<\/table>/gi, '</table></div>');
@@ -94,10 +137,15 @@ return getMd().utils.escapeHtml(String(text == null ? "" : text));
 // { title, date, formattedDate, tags, categories, slug, content, contentHtml, excerpt,
 //   author, source, canonical, license, showHeader, showFooter }
 // slug is derived from the filename by stripping the .md extension
+// ```mermaid blocks without accTitle/accDescr are reported as warnings (never a
+// parse failure) — see findUnannotatedMermaidBlocks.
 function parseMarkdownFile(filePath) {
 const md = getMd();
 const raw = fs.readFileSync(filePath, "utf-8");
 const { data, content } = matter(raw);
+// The warning must point at a line the author can open, so shift body lines by the
+// front-matter the parse dropped (everything in raw before the body).
+warnUnannotatedMermaidBlocks(filePath, content, raw.split(content)[0].split("\n").length - 1);
 const slug = path.basename(filePath, ".md");
 const contentHtml = wrapTablesInScrollContainer(md.render(content));
 // Truncate to 100 visible graphemes (Intl.Segmenter splits by user-perceived
@@ -183,6 +231,8 @@ md.utils.escapeHtml(post.formattedDate || "") + "</span></li>";
 module.exports = {
 getMd,
 parseMarkdownFile,
+findUnannotatedMermaidBlocks,
+warnUnannotatedMermaidBlocks,
 renderPostLinkList,
 renderTagsHtml,
 renderRecentPostsHtml,

@@ -90,7 +90,7 @@ Static attribution without edge routing: a Markdown mirror per post, a site inde
 ## Markdown extensions
 
 - Math: `$…$` inline, `$$…$$` block, rendered at build time — displays without JavaScript. Escape literal dollars as `\$`.
-- Diagrams: ` ```mermaid ` blocks, rendered client-side; the bundle loads only on pages containing a diagram.
+- Diagrams: ` ```mermaid ` blocks, rendered client-side; the bundle loads only on pages containing a diagram. Give each block an `accTitle:` and `accDescr:` line inside the diagram body — that is the diagram's alt text (SVG `<title>`/`<desc>` and the only description the `.md` mirror carries). A missing pair warns at build time.
 
 After upgrading `katex` / `mermaid` or editing `assets/`, run a full `build`; incremental `render` does not refresh already-copied vendor files.
 
