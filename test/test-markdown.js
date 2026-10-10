@@ -2,7 +2,45 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { renderTagsHtml, renderRecentPostsHtml, truncateGraphemes, findUnannotatedMermaidBlocks } = require("../scripts/lib/markdown");
+const { getMd, renderTagsHtml, renderRecentPostsHtml, truncateGraphemes, findUnannotatedMermaidBlocks } = require("../scripts/lib/markdown");
+
+describe("CJK emphasis", () => {
+  const inline = (src) => getMd().renderInline(src).trim();
+
+  it("closes a strong span whose content ends in CJK punctuation", () => {
+    // CommonMark's flanking rule makes these literal; the CJK amendment closes them.
+    assert.equal(inline("**结论。**后续"), "<strong>结论。</strong>后续");
+    assert.equal(inline("**模型再强。**左边"), "<strong>模型再强。</strong>左边");
+  });
+
+  it("pairs each span independently when several abut", () => {
+    assert.equal(
+      inline("用的**「宏是否被定义」**而非**「宏是否为真」**；"),
+      "用的<strong>「宏是否被定义」</strong>而非<strong>「宏是否为真」</strong>；"
+    );
+  });
+
+  it("does not nest adjacent spans when a closer is blocked by CJK punctuation", () => {
+    // `）**和` cannot close, so the run pairs past it with the last `**` and swallows
+    // the middle span. Tag counts stay balanced, so only the exact markup catches it.
+    assert.equal(
+      inline("**稳定前缀（Stable Prefix）**、**对话树（Conversation Tree）**和**跨模型容错机制**"),
+      "<strong>稳定前缀（Stable Prefix）</strong>、" +
+        "<strong>对话树（Conversation Tree）</strong>和<strong>跨模型容错机制</strong>"
+    );
+  });
+
+  it("still refuses a span that is padded with spaces", () => {
+    assert.equal(inline("** bold text **"), "** bold text **");
+  });
+
+  it("leaves Latin emphasis, intraword underscores and code spans untouched", () => {
+    assert.equal(inline("snake_case_word"), "snake_case_word");
+    assert.equal(inline("2 * 3 * 4 = 24"), "2 * 3 * 4 = 24");
+    assert.equal(inline("foo **bar** baz"), "foo <strong>bar</strong> baz");
+    assert.equal(inline("`a ** b`"), "<code>a ** b</code>");
+  });
+});
 
 describe("renderTagsHtml", () => {
   it("renders tags as pill spans", () => {

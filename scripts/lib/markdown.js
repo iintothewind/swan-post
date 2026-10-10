@@ -11,6 +11,13 @@ const MarkdownIt = require("markdown-it");
 const texmath = require("markdown-it-texmath");
 const katex = require("katex");
 const md = new MarkdownIt({ html: true, linkify: true });
+// CJK emphasis: CommonMark's flanking rule treats CJK punctuation (。、」） as
+// punctuation, so a strong span ending in one — **结论。**紧跟汉字 — cannot close
+// and renders as literal `**`. Posts are mostly Chinese, so opt into the
+// markdown-cjk-friendly amendment (commonmark#650) via its markdown-it plugin.
+// ESM-only: `require()` of an ES module needs Node >= 20.19 (CI pins 20.x).
+const cjkFriendly = require("markdown-it-cjk-friendly");
+md.use(cjkFriendly.default || cjkFriendly);
 // Math support: $...$ inline and $$...$$ block (LaTeX), rendered server-side to KaTeX HTML.
 // throwOnError: false → render malformed math as KaTeX's red error output instead of throwing.
 md.use(texmath, { engine: katex, delimiters: "dollars", katexOptions: { throwOnError: false } });

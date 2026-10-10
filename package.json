@@ -20,6 +20,7 @@
     "gray-matter": "^4.0.3",
     "katex": "^0.18.1",
     "markdown-it": "^14.0.0",
+    "markdown-it-cjk-friendly": "^3.0.0",
     "markdown-it-texmath": "^1.0.0",
     "mermaid": "^11.16.1",
     "xmllint-wasm": "^5.3.0"

@@ -91,6 +91,7 @@ Static attribution without edge routing: a Markdown mirror per post, a site inde
 
 - Math: `$…$` inline, `$$…$$` block, rendered at build time — displays without JavaScript. Escape literal dollars as `\$`.
 - Diagrams: ` ```mermaid ` blocks, rendered client-side; the bundle loads only on pages containing a diagram. Give each block an `accTitle:` and `accDescr:` line inside the diagram body — that is the diagram's alt text (SVG `<title>`/`<desc>` and the only description the `.md` mirror carries). A missing pair warns at build time.
+- CJK emphasis: `**粗体。**紧跟汉字` closes correctly. Stock CommonMark reads `。`「）」 as punctuation, so a strong span ending in one cannot close and prints a literal `**`. Latin text is unaffected, and a span padded with spaces (`** 粗体 **`) still renders literally.
 
 After upgrading `katex` / `mermaid` or editing `assets/`, run a full `build`; incremental `render` does not refresh already-copied vendor files.
 
