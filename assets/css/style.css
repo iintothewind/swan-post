@@ -314,9 +314,15 @@ body.sidebar-open #overlay-mask {
 }
 .post-excerpt {
   color: var(--muted);
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   font-size: 0.98rem;
   line-height: 1.75;
+}
+/* Home list: keep title and excerpt compact (no separator under meta) */
+.recent-post-item .post-meta {
+  margin-bottom: 4px;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 /* ---------- Markdown body typography ---------- */
