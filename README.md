@@ -1,11 +1,11 @@
 # swan-post (swp)
 
-A personal static blog generator in Node.js — Hexo alternative, output deployed to GitHub Pages. See `design.md` for architecture and invariants.
+A personal static site generator in Node.js: a minimal blog built from Markdown posts, optionally synced from GitHub gists, deployed to GitHub Pages. See `design.md` for architecture and invariants.
 
 ## Features
 
 - Fixed layout: overlay sidebar (timeline / tags), full-width content
-- Hexo-style Markdown with YAML front-matter
+- Markdown posts with YAML front-matter
 - Incremental render of a single post, without a full rebuild
 - Server-side KaTeX math; client-side Mermaid, loaded only on pages that need it
 - Per-post header/footer/attribution fragments, opt-out per post
