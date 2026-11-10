@@ -6,6 +6,7 @@
 
 :root {
   --sidebar-width: 300px;
+  --toc-width: 280px;
   --content-max-width: 720px;
   --content-padding-x: 28px;
   --content-padding-top: 96px;
@@ -53,10 +54,10 @@ body {
 }
 
 /* ---------- Sidebar toggle button ---------- */
-#sidebar-toggle {
+#sidebar-toggle,
+#toc-toggle {
   position: fixed;
   top: 18px;
-  left: 18px;
   z-index: 30;
   width: 42px;
   height: 42px;
@@ -69,10 +70,13 @@ body {
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
 }
-#sidebar-toggle:hover {
+#sidebar-toggle:hover,
+#toc-toggle:hover {
   background: var(--accent);
   color: var(--bg);
 }
+#sidebar-toggle { left: 18px; }
+#toc-toggle { right: 18px; }
 
 /* ---------- Sidebar ---------- */
 #sidebar {
@@ -207,6 +211,77 @@ body.sidebar-open #overlay-mask {
   display: block;
 }
 
+/* ---------- Table of contents ---------- */
+/* Present only on posts with enough headings (body.has-toc). Mirrors the sidebar on
+   the right edge. Narrow screens: off-canvas, closed until body.toc-open.
+   Desktop (>= 1024px): docked open beside the content until body.toc-collapsed. */
+#toc {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(var(--toc-width), 85vw);
+  height: 100vh;
+  background: var(--sidebar-bg);
+  border-left: 1px solid var(--border);
+  transform: translateX(100%);
+  transition: transform 0.28s ease;
+  z-index: 20;
+  overflow-y: auto;
+  padding: 72px 0 24px;
+}
+.toc-title {
+  margin: 0 20px;
+  padding: 0 4px 12px;
+  border-bottom: 3px double var(--border);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 10px 0;
+}
+.toc-list a {
+  display: block;
+  padding: 6px 24px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.5;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.toc-list a:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.toc-list .toc-l2 a { padding-left: 38px; }
+.toc-list .toc-l3 a {
+  padding-left: 52px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+@media (max-width: 1023px) {
+  body.toc-open #toc { transform: translateX(0); }
+  body.toc-open #overlay-mask { display: block; }
+}
+
+@media (min-width: 1024px) {
+  /* Docked: the panel takes its own column and the content keeps its 80% measure
+     within what is left, instead of sliding underneath */
+  body.has-toc:not(.toc-collapsed) {
+    padding-right: var(--toc-width);
+    --content-max-width: min(calc((100vw - var(--toc-width)) * 0.8), 2400px);
+  }
+  /* Below the overlay mask (15): the open site sidebar dims the docked panel too */
+  #toc {
+    transform: translateX(0);
+    z-index: 10;
+  }
+  body.toc-collapsed #toc { transform: translateX(100%); }
+}
+
 /* ---------- Main content area ---------- */
 #content {
   width: 100%;
@@ -326,6 +401,14 @@ body.sidebar-open #overlay-mask {
   padding-bottom: 0;
   border-bottom: none;
 }
+/* Home list: cap the excerpt at 3 lines (it runs to 5 on a phone otherwise) */
+.recent-post-item .post-excerpt {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
 
 /* ---------- Markdown body typography ---------- */
 .post-body {
@@ -335,6 +418,7 @@ body.sidebar-open #overlay-mask {
 .post-body h1, .post-body h2, .post-body h3,
 .post-body h4, .post-body h5, .post-body h6 {
   margin: 1.8em 0 0.6em;
+  scroll-margin-top: 72px;
   font-weight: 700;
   line-height: 1.35;
   color: var(--text);
@@ -379,8 +463,7 @@ body.sidebar-open #overlay-mask {
   padding: 0.4em 1.2em;
   border-left: 3px solid var(--accent);
   background: var(--accent-soft);
-  color: var(--muted);
-  font-style: italic;
+  color: var(--text);
 }
 .post-body blockquote > :last-child { margin-bottom: 0; }
 .post-body blockquote > :first-child { margin-top: 0; }

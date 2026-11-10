@@ -2,7 +2,7 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { getMd, renderTagsHtml, renderRecentPostsHtml, truncateGraphemes, findUnannotatedMermaidBlocks } = require("../scripts/lib/markdown");
+const { getMd, renderTagsHtml, renderTocHtml, renderRecentPostsHtml, truncateGraphemes, findUnannotatedMermaidBlocks } = require("../scripts/lib/markdown");
 
 describe("CJK emphasis", () => {
   const inline = (src) => getMd().renderInline(src).trim();
@@ -156,5 +156,37 @@ describe("truncateGraphemes", () => {
   it("handles emoji without splitting", () => {
     const result = truncateGraphemes("a😀b", 2);
     assert.equal(result, "a😀");
+  });
+});
+
+describe("heading ids and TOC", () => {
+  const render = (src) => {
+    const env = {};
+    const html = getMd().render(src, env);
+    return { html, headings: env.headings };
+  };
+
+  it("keeps CJK in ids and drops punctuation", () => {
+    const { html, headings } = render("## 开场：别装救世主的警告\n");
+    assert.match(html, /<h2 id="sec-开场别装救世主的警告">/);
+    assert.deepEqual(headings, [{ level: 2, id: "sec-开场别装救世主的警告", text: "开场：别装救世主的警告" }]);
+  });
+
+  it("numbers repeated headings so every id is unique", () => {
+    const { headings } = render("## warning\n\n## warning\n\n## warning\n");
+    assert.deepEqual(headings.map((h) => h.id), ["sec-warning", "sec-warning-1", "sec-warning-2"]);
+  });
+
+  it("lists h1-h3 only, but still gives deeper headings an id", () => {
+    const { html, headings } = render("# a\n\n### c\n\n#### d\n");
+    assert.deepEqual(headings.map((h) => h.level), [1, 3]);
+    assert.match(html, /<h4 id="sec-d">/);
+  });
+
+  it("emits no panel below three entries, and escapes heading text", () => {
+    const two = [{ level: 2, id: "sec-a", text: "a" }, { level: 2, id: "sec-b", text: "b" }];
+    assert.equal(renderTocHtml(two), "");
+    const three = two.concat({ level: 3, id: "sec-c", text: "<c>" });
+    assert.match(renderTocHtml(three), /<li class="toc-l3"><a href="#sec-c">&lt;c&gt;<\/a><\/li>/);
   });
 });

@@ -94,7 +94,8 @@ const fullHtml = renderLayout(config, {
   pageTitle: post.title,
   content: postHtml,
   postAlternateMd: renderPostAlternateLink(config, post.slug),
-  postMetaHtml: renderPostSocialMeta(post, config)
+  postMetaHtml: renderPostSocialMeta(post, config),
+  tocHtml: post.tocHtml
 });
 fs.writeFileSync(path.join(docsDir, "posts", post.slug + ".html"), fullHtml, "utf-8");
 writeAgentMarkdownFile(docsDir, post, agentMd);

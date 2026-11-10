@@ -2,6 +2,42 @@ const fs = require("fs-extra");
 const path = require("path");
 const matter = require("gray-matter");
 
+// Heading ids are prefixed so a heading can never collide with a shell id
+// (#content, #sidebar, #toc …) and pick up its CSS or its getElementById lookup.
+const HEADING_ID_PREFIX = "sec-";
+// The TOC lists document-level h1–h3, and only appears once there is something to navigate.
+const TOC_MAX_LEVEL = 3;
+const TOC_MIN_ENTRIES = 3;
+
+// GitHub-style slug that keeps CJK: lower-case, drop everything except
+// letters / digits / whitespace / _ / -, then whitespace runs → "-".
+function slugifyHeading(text) {
+const slug = String(text).trim().toLowerCase()
+.replace(/[^\p{L}\p{N}\s_-]/gu, "")
+.replace(/\s+/g, "-");
+return slug || "section";
+}
+
+// `used` is the per-document set of ids already handed out; repeats get -1, -2, …
+function uniqueHeadingId(text, used) {
+const base = HEADING_ID_PREFIX + slugifyHeading(text);
+let id = base;
+for (let n = 1; used.has(id); n++) id = base + "-" + n;
+used.add(id);
+return id;
+}
+
+// Plain text of a heading's inline token: text and code spans only, so markup,
+// images and math never leak into an id or a TOC label.
+function headingText(inline) {
+const children = (inline && inline.children) || [];
+return children
+.filter((t) => t.type === "text" || t.type === "code_inline")
+.map((t) => t.content)
+.join("")
+.trim();
+}
+
 // Lazy-init markdown-it renderer so modules that only need config/attribution
 // (e.g. deploy, gist-sync, tests with agentMarkdown:false) don't load KaTeX.
 let _md = null;
@@ -31,6 +67,22 @@ return `<div class="mermaid">${md.utils.escapeHtml(token.content)}</div>`;
 }
 return defaultFence(tokens, idx, options, env, self);
 };
+// Heading anchors + TOC source. Runs on the token stream the renderer consumes, so
+// the ids in the HTML and the entries in the TOC cannot disagree. Every heading gets
+// an id; env.headings carries only what the TOC lists.
+md.core.ruler.push("swp_heading_ids", function (state) {
+const used = new Set();
+const headings = [];
+state.tokens.forEach(function (token, i) {
+if (token.type !== "heading_open") return;
+const text = headingText(state.tokens[i + 1]);
+const id = uniqueHeadingId(text, used);
+token.attrSet("id", id);
+const level = Number(token.tag.slice(1));
+if (token.level === 0 && level <= TOC_MAX_LEVEL && text) headings.push({ level, id, text });
+});
+state.env.headings = headings;
+});
 _md = md;
 return md;
 }
@@ -141,8 +193,8 @@ return getMd().utils.escapeHtml(String(text == null ? "" : text));
 }
 
 // Parse a single markdown file, returns:
-// { title, date, formattedDate, tags, categories, slug, content, contentHtml, excerpt,
-//   author, source, canonical, license, showHeader, showFooter }
+// { title, date, formattedDate, tags, categories, slug, content, contentHtml, tocHtml,
+//   excerpt, author, source, canonical, license, showHeader, showFooter }
 // slug is derived from the filename by stripping the .md extension
 // ```mermaid blocks without accTitle/accDescr are reported as warnings (never a
 // parse failure) — see findUnannotatedMermaidBlocks.
@@ -154,7 +206,8 @@ const { data, content } = matter(raw);
 // front-matter the parse dropped (everything in raw before the body).
 warnUnannotatedMermaidBlocks(filePath, content, raw.split(content)[0].split("\n").length - 1);
 const slug = path.basename(filePath, ".md");
-const contentHtml = wrapTablesInScrollContainer(md.render(content));
+const env = {};
+const contentHtml = wrapTablesInScrollContainer(md.render(content, env));
 // Truncate to 100 visible graphemes (Intl.Segmenter splits by user-perceived
 // characters, won't cut in the middle of an emoji / surrogate pair).
 const excerpt = truncateGraphemes(plainTextFromHtml(contentHtml), 100);
@@ -178,10 +231,27 @@ license: data.license ? String(data.license) : "",
 slug,
 content,
 contentHtml,
+tocHtml: renderTocHtml(env.headings),
 excerpt,
 showHeader: data.header !== false,
 showFooter: data.footer !== false
 };
+}
+
+// The whole TOC panel (toggle button + aside), or "" for a post with fewer than
+// TOC_MIN_ENTRIES headings. Built as one string because the template engine has no
+// conditionals: a short post must ship no panel and no button at all.
+// Heading text is untrusted; escape before embedding.
+function renderTocHtml(headings) {
+const list = Array.isArray(headings) ? headings : [];
+if (list.length < TOC_MIN_ENTRIES) return "";
+const items = list.map((h) =>
+'<li class="toc-l' + h.level + '"><a href="#' + escapeHtml(h.id) + '">' + escapeHtml(h.text) + "</a></li>"
+).join("\n");
+return '<button id="toc-toggle" aria-label="Toggle table of contents" aria-controls="toc">§</button>\n' +
+'<aside id="toc" aria-label="Table of contents">\n' +
+'<div class="toc-title">Contents</div>\n' +
+'<ul class="toc-list">\n' + items + "\n</ul>\n</aside>";
 }
 
 // Render a tags array as HTML: concatenated <span class="tag-pill">xxx</span> elements.
@@ -242,6 +312,7 @@ findUnannotatedMermaidBlocks,
 warnUnannotatedMermaidBlocks,
 renderPostLinkList,
 renderTagsHtml,
+renderTocHtml,
 renderRecentPostsHtml,
 truncateGraphemes,
 plainTextFromHtml,

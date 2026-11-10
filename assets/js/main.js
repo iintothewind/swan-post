@@ -5,11 +5,31 @@ var toggleBtn = document.getElementById("sidebar-toggle");
 var overlayMask = document.getElementById("overlay-mask");
 
 toggleBtn.addEventListener("click", function () {
+body.classList.remove("toc-open");
 body.classList.toggle("sidebar-open");
 });
 overlayMask.addEventListener("click", function () {
-body.classList.remove("sidebar-open");
+body.classList.remove("sidebar-open", "toc-open");
 });
+
+// Table of contents: only posts with enough headings ship the panel.
+var tocToggle = document.getElementById("toc-toggle");
+var toc = document.getElementById("toc");
+if (tocToggle && toc) {
+var desktopToc = window.matchMedia("(min-width: 1024px)");
+tocToggle.addEventListener("click", function () {
+if (desktopToc.matches) {
+body.classList.toggle("toc-collapsed");
+} else {
+body.classList.remove("sidebar-open");
+body.classList.toggle("toc-open");
+}
+});
+// On narrow screens the drawer covers the article, so close it once a section is picked.
+toc.addEventListener("click", function (e) {
+if (e.target.closest("a")) body.classList.remove("toc-open");
+});
+}
 
 // Tab switching
 var tabBtns = document.querySelectorAll(".tab-btn");

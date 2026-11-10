@@ -78,7 +78,9 @@ SIDEBAR_POST_COUNT: config.sidebarPostCount || 200,
 POST_ALTERNATE_MD: opts.postAlternateMd || "",
 POST_META_HTML: opts.postMetaHtml || "",
 PAGE_HEAD_HTML: opts.headHtml || "",
-CONTENT: opts.content || ""
+CONTENT: opts.content || "",
+BODY_CLASS: opts.tocHtml ? "has-toc" : "",
+TOC_HTML: opts.tocHtml || ""
 });
 }
 
