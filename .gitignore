@@ -32,3 +32,6 @@ bun.lock
 
 # WorkBuddy
 .workbuddy-ai/
+
+# omp
+.omp/
