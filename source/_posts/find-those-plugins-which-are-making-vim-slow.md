@@ -6,7 +6,6 @@ tags:
 header: true
 footer: true
 author: Ivar.Chen
-source: 'https://iintothewind.github.io/'
 ---
 
 ## option 1: use **hyiltiz/vim-plugins-profile**

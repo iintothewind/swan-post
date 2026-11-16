@@ -6,7 +6,6 @@ tags:
 header: true
 footer: true
 author: Ivar.Chen
-source: 'https://iintothewind.github.io/'
 ---
 ## Step 1: Add user entry in docker-compose.yml
 

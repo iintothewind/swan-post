@@ -7,7 +7,6 @@ tags:
 header: true
 footer: true
 author: Ivar.Chen
-source: 'https://iintothewind.github.io/'
 ---
 
 Linux 的字符串截取很有用,有八种方法。

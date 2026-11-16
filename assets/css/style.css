@@ -318,6 +318,11 @@ body.sidebar-open #overlay-mask {
   letter-spacing: -0.01em;
 }
 
+/* Page title steps back when the body opens with its own h1 (typical for gist posts) */
+.post h1.post-title-muted {
+  color: var(--muted);
+}
+
 .post-meta {
   color: var(--muted);
   font-size: 13.5px;

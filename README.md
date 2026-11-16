@@ -61,14 +61,13 @@ date: 2026-07-04 10:00:00
 tags: [tag1, tag2]
 header: true     # false skips the header include
 footer: true     # false skips body meta, body attribution and footer
-author: Ivar.Chen                    # optional, overrides config
-source: https://username.github.io/  # optional, overrides config
+author: Ivar.Chen  # optional, overrides config
 ---
 
 Body content in standard Markdown.
 ```
 
-`canonical` and `license` are optional per-post overrides; `gist_id` is written by `gist-sync`.
+`canonical` and `license` are optional per-post overrides; `gist_id` is written by `gist-sync`. A post's `source` is always its own `.md` mirror URL (the HTML permalink when `agentMarkdown` is `false`).
 
 ### Includes
 

@@ -80,6 +80,7 @@ posts.forEach((post) => {
 const { headerHtml, bodyMetaHtml, footerHtml, bodyAttributionHtml } = buildPostIncludes(config, post);
 const postHtml = renderTemplate(postTpl, {
 POST_TITLE: post.title,
+POST_TITLE_CLASS: post.hasBodyTitle ? "post-title-muted" : "",
 POST_DATE_FORMATTED: post.formattedDate,
 POST_TAGS_HTML: renderTagsHtml(post.tags),
 POST_HEADER_HTML: headerHtml,

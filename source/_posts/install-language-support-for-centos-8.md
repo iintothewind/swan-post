@@ -7,7 +7,6 @@ tags:
 header: true
 footer: true
 author: Ivar.Chen
-source: 'https://iintothewind.github.io/'
 ---
 
 ## 如何在centos 8 stream上通过命令正确的安装中文语言支持

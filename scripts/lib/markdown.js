@@ -194,7 +194,7 @@ return getMd().utils.escapeHtml(String(text == null ? "" : text));
 
 // Parse a single markdown file, returns:
 // { title, date, formattedDate, tags, categories, slug, content, contentHtml, tocHtml,
-//   excerpt, author, source, canonical, license, showHeader, showFooter }
+//   excerpt, author, canonical, license, hasBodyTitle, showHeader, showFooter }
 // slug is derived from the filename by stripping the .md extension
 // ```mermaid blocks without accTitle/accDescr are reported as warnings (never a
 // parse failure) — see findUnannotatedMermaidBlocks.
@@ -225,12 +225,14 @@ formattedDate,
 tags: Array.isArray(data.tags) ? data.tags : (typeof data.tags === "string" && data.tags.trim() ? [data.tags] : []),
 categories: Array.isArray(data.categories) ? data.categories : (typeof data.categories === "string" && data.categories.trim() ? [data.categories] : []),
 author: data.author ? String(data.author) : "",
-source: data.source ? String(data.source) : "",
 canonical: data.canonical ? String(data.canonical) : "",
 license: data.license ? String(data.license) : "",
 slug,
 content,
 contentHtml,
+// True when the body opens with its own h1: the page then shows two titles, and
+// post.html mutes the front-matter one (POST_TITLE_CLASS) so the body title leads.
+hasBodyTitle: /^\s*<h1[\s>]/.test(contentHtml),
 tocHtml: renderTocHtml(env.headings),
 excerpt,
 showHeader: data.header !== false,

@@ -2,7 +2,10 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { getMd, renderTagsHtml, renderTocHtml, renderRecentPostsHtml, truncateGraphemes, findUnannotatedMermaidBlocks } = require("../scripts/lib/markdown");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const { getMd, renderTagsHtml, renderTocHtml, renderRecentPostsHtml, truncateGraphemes, findUnannotatedMermaidBlocks, parseMarkdownFile } = require("../scripts/lib/markdown");
 
 describe("CJK emphasis", () => {
   const inline = (src) => getMd().renderInline(src).trim();
@@ -188,5 +191,28 @@ describe("heading ids and TOC", () => {
     assert.equal(renderTocHtml(two), "");
     const three = two.concat({ level: 3, id: "sec-c", text: "<c>" });
     assert.match(renderTocHtml(three), /<li class="toc-l3"><a href="#sec-c">&lt;c&gt;<\/a><\/li>/);
+  });
+});
+
+describe("parseMarkdownFile hasBodyTitle", () => {
+  // parseMarkdownFile reads from disk, so each case round-trips a temp file.
+  const parseBody = (body) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "swp-test-"));
+    const file = path.join(dir, "post.md");
+    fs.writeFileSync(file, "---\ntitle: T\ndate: 2026-01-01 00:00:00\n---\n\n" + body, "utf-8");
+    try {
+      return parseMarkdownFile(file);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  };
+
+  it("is true when the body opens with its own h1", () => {
+    assert.equal(parseBody("# File title\n\nText.\n").hasBodyTitle, true);
+  });
+
+  it("is false when the first block is not an h1", () => {
+    assert.equal(parseBody("Intro paragraph.\n\n# Later title\n").hasBodyTitle, false);
+    assert.equal(parseBody("## Section\n\nText.\n").hasBodyTitle, false);
   });
 });

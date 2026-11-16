@@ -13,7 +13,6 @@ const config = {
   siteUrl: "https://example.com",
   githubUser: "testuser",
   postAuthor: "Test Author",
-  postSource: "https://example.com/",
   postHeader: "source/_includes/post-header.html",
   postFooter: "source/_includes/post-footer.html",
   postBodyMeta: "source/_includes/post-body-meta.html",
@@ -50,7 +49,6 @@ describe("buildPostTemplateVars", () => {
       slug: "hello-world",
       tags: ["essay"],
       author: "",
-      source: "",
     };
     const vars = buildPostTemplateVars(config, post);
     assert.equal(vars.SITE_TITLE, "Test Blog");
@@ -60,6 +58,13 @@ describe("buildPostTemplateVars", () => {
     assert.equal(vars.GITHUB_USER, "testuser");
     assert.equal(vars.GITHUB_URL, "https://github.com/testuser");
     assert.match(vars.POST_TAGS_HTML, /tag-pill/);
+    assert.equal(vars.POST_SOURCE, "https://example.com/posts/hello-world.md");
+  });
+
+  it("falls back to the HTML permalink as source when mirrors are disabled", () => {
+    const post = { title: "Hello", formattedDate: "2026-01-01", slug: "hello-world", tags: [] };
+    const vars = buildPostTemplateVars(Object.assign({}, config, { agentMarkdown: false }), post);
+    assert.equal(vars.POST_SOURCE, "https://example.com/posts/hello-world.html");
   });
 });
 
@@ -71,7 +76,6 @@ describe("buildPostIncludes", () => {
       slug: "test",
       tags: [],
       author: "",
-      source: "",
       showHeader: true,
       showFooter: true,
     };

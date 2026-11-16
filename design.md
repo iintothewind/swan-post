@@ -73,7 +73,7 @@ Things that are easy to break and expensive to notice:
 | `license`, `licenseUrl` | Optional; drives llms.txt, post footer and mirror headers |
 | `recentPostsCount`, `sidebarPostCount` | Homepage list and sidebar cap |
 | `postHeader`, `postFooter`, `postBodyMeta`, `postBodyAttribution` | Include fragment paths |
-| `postAuthor`, `postSource` | Defaults for attribution |
+| `postAuthor` | Default author for attribution |
 | `agentMarkdown`, `agentAttribution` | Mirrors on/off and their header template |
 | `githubUser`, `deployTarget` | Gist sync and Pages repo |
 | `llmsFullMaxPosts` | Optional cap for llms-full.txt |
@@ -88,7 +88,7 @@ Deployment is a separate Pages repo; `deploy` builds, replaces its contents with
 |---|---|
 | `title`, `date` | Required; dates parse as UTC |
 | `tags`, `categories` | Optional arrays |
-| `author`, `source` | Override site defaults |
+| `author` | Overrides site default; `source` is always the post's `.md` mirror URL |
 | `canonical`, `license` | Optional per-post overrides |
 | `header`, `footer` | `false` opts out of includes |
 
