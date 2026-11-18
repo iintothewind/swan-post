@@ -123,11 +123,47 @@ return found;
 // passes the number of front-matter lines it dropped as lineOffset — the author
 // gets a line they can open the file at.
 function warnUnannotatedMermaidBlocks(filePath, markdown, lineOffset) {
-// Forward slashes so the message reads the same on Windows and on CI
-const rel = (path.relative(process.cwd(), filePath) || filePath).split(path.sep).join("/");
+const rel = displayPath(filePath);
 findUnannotatedMermaidBlocks(markdown, lineOffset).forEach(({ line, missing }) => {
 console.warn("mermaid warning: " + rel + ":" + line + " diagram has no " + missing.join(" / "));
 });
+}
+
+// Text after a block's closing `$$` on the same line is never part of the formula:
+// markdown-it-texmath turns `(n)` there into its own equation-number markup and
+// silently drops anything else (`[1]`, `1)`, `1.` …). Rather than support one
+// spelling, every such line warns; equation numbers go inside as `\tag{…}`.
+// Same closing pattern as the plugin's `dollars` block rule (texmath.js).
+const MATH_BLOCK_RE = /\${2}([^$]*?[^\\])\${2}/;
+// Returns [{ line, text }] for each $$…$$ block whose closing line carries trailing
+// text; `line` is that closing line, shifted like the mermaid check.
+function findMathTrailingText(markdown, lineOffset) {
+const offset = lineOffset || 0;
+const src = String(markdown || "");
+const lines = src.split("\n");
+const found = [];
+getMd().parse(src, {}).forEach((token) => {
+if ((token.type !== "math_block" && token.type !== "math_block_eqno") || !token.map) return;
+// token.map spans the opening line through the line holding the closing `$$`
+const block = lines.slice(token.map[0], token.map[1]).join("\n");
+const match = MATH_BLOCK_RE.exec(block);
+if (!match) return;
+const text = block.slice(match.index + match[0].length).trim();
+if (text) found.push({ line: token.map[1] + offset, text });
+});
+return found;
+}
+
+function warnMathTrailingText(filePath, markdown, lineOffset) {
+const rel = displayPath(filePath);
+findMathTrailingText(markdown, lineOffset).forEach(({ line, text }) => {
+console.warn("math warning: " + rel + ":" + line + " text after closing $$ is not supported: " + JSON.stringify(text) + " (number an equation with \\tag{…} inside the formula)");
+});
+}
+
+// Forward slashes so build messages read the same on Windows and on CI
+function displayPath(filePath) {
+return (path.relative(process.cwd(), filePath) || filePath).split(path.sep).join("/");
 }
 
 // Wrap tables in a horizontal scroll container so wide markdown tables don't overflow on mobile.
@@ -196,15 +232,18 @@ return getMd().utils.escapeHtml(String(text == null ? "" : text));
 // { title, date, formattedDate, tags, categories, slug, content, contentHtml, tocHtml,
 //   excerpt, author, canonical, license, hasBodyTitle, showHeader, showFooter }
 // slug is derived from the filename by stripping the .md extension
-// ```mermaid blocks without accTitle/accDescr are reported as warnings (never a
-// parse failure) — see findUnannotatedMermaidBlocks.
+// ```mermaid blocks without accTitle/accDescr, and text after a $$…$$ block's
+// closing `$$`, are reported as warnings (never a parse failure) — see
+// findUnannotatedMermaidBlocks / findMathTrailingText.
 function parseMarkdownFile(filePath) {
 const md = getMd();
 const raw = fs.readFileSync(filePath, "utf-8");
 const { data, content } = matter(raw);
-// The warning must point at a line the author can open, so shift body lines by the
+// The warnings must point at a line the author can open, so shift body lines by the
 // front-matter the parse dropped (everything in raw before the body).
-warnUnannotatedMermaidBlocks(filePath, content, raw.split(content)[0].split("\n").length - 1);
+const bodyLineOffset = raw.split(content)[0].split("\n").length - 1;
+warnUnannotatedMermaidBlocks(filePath, content, bodyLineOffset);
+warnMathTrailingText(filePath, content, bodyLineOffset);
 const slug = path.basename(filePath, ".md");
 const env = {};
 const contentHtml = wrapTablesInScrollContainer(md.render(content, env));
@@ -312,6 +351,7 @@ getMd,
 parseMarkdownFile,
 findUnannotatedMermaidBlocks,
 warnUnannotatedMermaidBlocks,
+findMathTrailingText,
 renderPostLinkList,
 renderTagsHtml,
 renderTocHtml,

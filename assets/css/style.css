@@ -531,6 +531,83 @@ body.sidebar-open #overlay-mask {
   padding: 0.2em 0;
 }
 
+/* Block tools: icon buttons that main.js pins to the top-right of a diagram
+   (its .mermaid-frame wrapper) or a display formula (its <section>). Shown on
+   hover / keyboard focus; always shown where there is no hover (touch). */
+.post-body .block-frame {
+  position: relative;
+}
+.post-body .block-tools {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+/* A \tag{…} number sits at the formula's right edge; keep the button clear of it */
+.post-body section:has(.katex-tag) > .block-tools {
+  right: 3.5em;
+}
+.post-body .block-frame:hover > .block-tools,
+.post-body .block-tools:focus-within {
+  opacity: 1;
+}
+@media (hover: none) {
+  .post-body .block-tools { opacity: 1; }
+}
+.post-body .block-tools button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.post-body .block-tools button:hover,
+.post-body .block-tools button:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Fullscreen diagram: the frame covers the window (above the corner toggles, z 30)
+   and the SVG scales to fit it. The page behind must not scroll meanwhile. */
+body.diagram-fullscreen {
+  overflow: hidden;
+}
+.post-body .mermaid-frame.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  padding: 58px 24px 24px;
+  background: var(--bg);
+}
+.post-body .mermaid-frame.is-fullscreen > .block-tools {
+  top: 14px;
+  right: 18px;
+  opacity: 1;
+}
+.post-body .mermaid-frame.is-fullscreen > .mermaid {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+/* !important: mermaid writes max-width inline on the SVG */
+.post-body .mermaid-frame.is-fullscreen > .mermaid > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none !important;
+}
+
 /* Tables: cells wrap to fit the column; only tables that still don't fit scroll horizontally
    (same pattern as mermaid / katex-display) */
 .post-body .table-scroll {

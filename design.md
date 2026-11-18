@@ -98,6 +98,8 @@ Emphasis follows the [markdown-cjk-friendly](https://github.com/tats-u/markdown-
 
 Diagrams carry their alt text in the source: `accTitle:` and `accDescr:` as statements **inside the diagram body**. Mermaid turns them into the SVG's `<title>`/`<desc>` plus `aria-labelledby`/`aria-describedby`, and they are the only natural-language description of the diagram that reaches the `.md` mirror — the surface an agent actually reads. The front-matter form produces nothing, so it does not count. A block missing either annotation warns at build time and still renders: the diagram keeps working, it just loses its alt text.
 
+Block math is numbered with KaTeX's `\tag{…}` inside the formula. Text after a block's closing `$$` on the same line is never part of it: markdown-it-texmath renders `(n)` there as separate equation-number markup the site does not style, and silently drops anything else (`[1]`, `1)`, `1.`). Rather than support one spelling, the build warns about any such text and still renders the formula.
+
 ## Verification
 
 `npm test` builds, runs the unit suites, and runs the attribution/crawler acceptance script. Two standalone checks exist for CI:

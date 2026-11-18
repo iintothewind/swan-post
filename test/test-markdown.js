@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { getMd, renderTagsHtml, renderTocHtml, renderRecentPostsHtml, truncateGraphemes, findUnannotatedMermaidBlocks, parseMarkdownFile } = require("../scripts/lib/markdown");
+const { getMd, renderTagsHtml, renderTocHtml, renderRecentPostsHtml, truncateGraphemes, findUnannotatedMermaidBlocks, findMathTrailingText, parseMarkdownFile } = require("../scripts/lib/markdown");
 
 describe("CJK emphasis", () => {
   const inline = (src) => getMd().renderInline(src).trim();
@@ -138,6 +138,32 @@ describe("findUnannotatedMermaidBlocks", () => {
   it("reports every block in a post, in document order", () => {
     const md = "```mermaid\ngraph TD\n  accTitle: A\n  accDescr: a\n  A --> B\n```\n\n```mermaid\ngraph TD\n  A --> B\n```\n";
     assert.deepEqual(findUnannotatedMermaidBlocks(md), [{ line: 8, missing: ["accTitle", "accDescr"] }]);
+  });
+});
+
+describe("findMathTrailingText", () => {
+  it("reports nothing for plain blocks and \\tag numbers", () => {
+    const md = "$$\nE = mc^2\n$$\n\n$$ a+b \\tag{1} $$\n";
+    assert.deepEqual(findMathTrailingText(md), []);
+  });
+
+  it("reports any trailing number, (n) included", () => {
+    const md = "$$ a $$ (1)\n\n$$ b $$ [1]\n\n$$ c $$ 1.\n";
+    assert.deepEqual(findMathTrailingText(md), [
+      { line: 1, text: "(1)" },
+      { line: 3, text: "[1]" },
+      { line: 5, text: "1." },
+    ]);
+  });
+
+  it("reports the closing line of a multi-line block, shifted by lineOffset", () => {
+    const md = "Intro\n\n$$\na+b\n$$ 1)\n";
+    assert.deepEqual(findMathTrailingText(md), [{ line: 5, text: "1)" }]);
+    assert.deepEqual(findMathTrailingText(md, 4), [{ line: 9, text: "1)" }]);
+  });
+
+  it("ignores $$ inside a code fence", () => {
+    assert.deepEqual(findMathTrailingText("```\n$$ a $$ [1]\n```\n"), []);
   });
 });
 
